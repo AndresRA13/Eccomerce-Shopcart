@@ -12,9 +12,14 @@ export default function Productos() {
   const { products, fetchProducts, isLoadingProducts } = useApp();
   const { agregarAlCarrito, agregarAFavoritos, quitarDeFavoritos, estaEnFavoritos } = useCart();
 
+  // Optimización de carga de productos
   useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
+    // Verificar si ya tenemos productos cargados para evitar cargas innecesarias
+    if (products.length === 0 && !isLoadingProducts) {
+      console.log('Cargando productos en Productos...');
+      fetchProducts();
+    }
+  }, [fetchProducts, products.length, isLoadingProducts]);
 
   const toggleFavorito = (producto) => {
     const isFav = estaEnFavoritos(producto.id);
@@ -31,13 +36,20 @@ export default function Productos() {
       <div className="productos-container">
         <h1 className="titulo">Productos disponibles</h1>
 
-        {isLoadingProducts ? (
-          <div className="loader-wrapper">
-            <Loader size="lg" color="#16a34a" text="Cargando productos..." />
-          </div>
-        ) : (
-          <div className="productos-grid">
-            {products.map((producto) => (
+        <div className="productos-grid">
+          {isLoadingProducts ? (
+            // Mostrar esqueletos de carga mientras se cargan los productos
+            Array(8).fill(0).map((_, index) => (
+              <div key={`skeleton-${index}`} className="skeleton-card">
+                <div className="skeleton-image"></div>
+                <div className="skeleton-title"></div>
+                <div className="skeleton-price"></div>
+                <div className="skeleton-button"></div>
+              </div>
+            ))
+          ) : products.length > 0 ? (
+            // Mostrar productos cuando estén cargados
+            products.map((producto) => (
               <ProductCard
                 key={producto.id}
                 producto={producto}
@@ -45,9 +57,14 @@ export default function Productos() {
                 toggleFavorito={() => toggleFavorito(producto)}
                 favoritos={estaEnFavoritos(producto.id) ? [producto] : []}
               />
-            ))}
-          </div>
-        )}
+            ))
+          ) : (
+            // Mensaje cuando no hay productos
+            <div className="no-products-message">
+              <p>No se encontraron productos disponibles.</p>
+            </div>
+          )}
+        </div>
       </div>
       <Footer />
 
@@ -58,6 +75,60 @@ export default function Productos() {
 
         /* Loader */
         .loader-wrapper { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 60vh; width: 100%; }
+        
+        /* Esqueletos de carga */
+        .skeleton-card {
+          background-color: #fff;
+          border-radius: 8px;
+          padding: 16px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          height: 300px;
+        }
+        .skeleton-image {
+          width: 100%;
+          height: 150px;
+          background-color: #f0f0f0;
+          border-radius: 6px;
+          animation: pulse 1.5s infinite ease-in-out;
+        }
+        .skeleton-title {
+          height: 24px;
+          width: 80%;
+          background-color: #f0f0f0;
+          border-radius: 4px;
+          animation: pulse 1.5s infinite ease-in-out;
+        }
+        .skeleton-price {
+          height: 18px;
+          width: 40%;
+          background-color: #f0f0f0;
+          border-radius: 4px;
+          animation: pulse 1.5s infinite ease-in-out;
+        }
+        .skeleton-button {
+          height: 36px;
+          width: 100%;
+          background-color: #f0f0f0;
+          border-radius: 4px;
+          margin-top: auto;
+          animation: pulse 1.5s infinite ease-in-out;
+        }
+        .no-products-message {
+          grid-column: 1 / -1;
+          text-align: center;
+          padding: 40px 0;
+          color: #666;
+        }
+        
+        /* Animación de pulso para los esqueletos */
+        @keyframes pulse {
+          0% { opacity: 0.6; }
+          50% { opacity: 1; }
+          100% { opacity: 0.6; }
+        }
       `}</style>
     </>
   );

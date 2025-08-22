@@ -138,9 +138,10 @@ export default function ProductoDetalle() {
     productoFavorito ? quitarDeFavoritos(id) : agregarAFavoritos(producto);
   };
 
-  const promedio = reviews.length > 0
+  // Primero usamos el rating guardado en el producto, si no existe calculamos el promedio de reviews
+  const promedio = producto?.rating || (reviews.length > 0
     ? Math.round((reviews.reduce((s, r) => s + (r.rating || 0), 0) / reviews.length) * 10) / 10
-    : (producto?.rating || 0);
+    : 0);
 
   const enviarReview = async (e) => {
     e.preventDefault();
@@ -216,9 +217,9 @@ export default function ProductoDetalle() {
         <div className="pd-info">
           <h1 className="pd-title">{producto.name}</h1>
           <div className="pd-rating-row">
-            <StarRating value={promedio} readOnly />
-            <span className="pd-rating-num">({promedio || 0})</span>
-            <span className="pd-reviews">{reviews.length || producto.reviews || 0} Reviews</span>
+            <StarRating rating={producto?.rating || promedio} readOnly />
+            <span className="pd-rating-num">({producto?.rating || promedio || 0})</span>
+            <span className="pd-reviews">{reviews.length || producto?.reviews || 0} Reviews</span>
           </div>
           <p className="pd-desc">{producto.description || ""}</p>
 
@@ -269,7 +270,7 @@ export default function ProductoDetalle() {
             {reviews.map((r) => (
               <li key={r.id} className="review-item">
                 <div className="review-header">
-                  <StarRating value={r.rating || 0} size="sm" readOnly />
+                  <StarRating rating={r.rating || 0} size="sm" readOnly />
                   <span className="review-user">{r.user || 'Anónimo'}</span>
                 </div>
                 <p className="review-text">{r.text}</p>

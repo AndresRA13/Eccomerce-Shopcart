@@ -123,6 +123,10 @@ export const CartProvider = ({ children }) => {
         name: item.name,
         price: item.price,
         image: item.image || item.mainImage || item.images?.[0] || "",
+        stock: item.stock || 0,
+        category: item.category || "Sin categoría",
+        type: item.type || "Producto",
+        status: item.stock > 0 ? "In Stock" : "Out of Stock"
       }));
       await setDoc(doc(db, "favoritos", userId), { products: reducido });
     } catch (error) {

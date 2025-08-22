@@ -113,17 +113,28 @@ export const AppProvider = ({ children }) => {
     };
   }, []);
 
-  // Suscripción en tiempo real a products - Optimizado con useCallback
+  // Suscripción en tiempo real a products - Optimizado con useCallback, caché y carga progresiva
   const fetchProducts = useCallback(async () => {
-    if (productsUnsub) return; // evitar duplicar listeners
+    // Si ya tenemos una suscripción activa, no crear otra
+    if (productsUnsub) return; 
     
+    // Si ya tenemos productos y no estamos forzando la recarga, usar caché
+    if (products.length > 0) {
+      console.log("Usando productos en caché:", products.length);
+      return;
+    }
+    
+    console.log("Iniciando carga de productos desde Firestore...");
     setIsLoadingProducts(true);
-    const q = query(collection(db, "products"));
     
-    const unsubscribe = onSnapshot(
-      q,
-      (snap) => {
-        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    try {
+      // Primero intentamos obtener los productos con getDocs para una carga más rápida
+      // Limitamos a 20 productos inicialmente para mostrar algo rápido
+      const initialQuery = query(collection(db, "products"), limit(20));
+      const productsSnapshot = await getDocs(initialQuery);
+      
+      if (!productsSnapshot.empty) {
+        const list = productsSnapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
         setProducts(list);
         
         // Calcular productos destacados (con mayor rating)
@@ -132,16 +143,58 @@ export const AppProvider = ({ children }) => {
           .slice(0, 4);
         setFeaturedProducts(featured);
         
-        setIsLoadingProducts(false);
-      },
-      (err) => {
-        console.error("Error en products listener:", err);
-        setIsLoadingProducts(false);
+        // Marcamos como parcialmente cargado
+        console.log("Productos cargados inicialmente (parcial):", list.length);
       }
-    );
-    
-    setProductsUnsub(() => unsubscribe);
-  }, [productsUnsub]);
+      
+      // Luego cargamos todos los productos
+      const fullQuery = query(collection(db, "products"));
+      const fullSnapshot = await getDocs(fullQuery);
+      
+      if (!fullSnapshot.empty) {
+        const fullList = fullSnapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setProducts(fullList);
+        
+        // Recalcular productos destacados con la lista completa
+        const featured = [...fullList]
+          .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+          .slice(0, 4);
+        setFeaturedProducts(featured);
+        
+        setIsLoadingProducts(false);
+        console.log("Productos cargados completamente:", fullList.length);
+      }
+      
+      // Finalmente configuramos la suscripción en tiempo real solo para actualizaciones
+      const unsubscribe = onSnapshot(
+        fullQuery,
+        (snap) => {
+          // Solo actualizamos si hay cambios reales
+          if (!snap.metadata.hasPendingWrites && !snap.metadata.fromCache) {
+            const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+            setProducts(list);
+            
+            // Calcular productos destacados (con mayor rating)
+            const featured = [...list]
+              .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+              .slice(0, 4);
+            setFeaturedProducts(featured);
+            
+            console.log("Productos actualizados en tiempo real:", list.length);
+          }
+        },
+        (err) => {
+          console.error("Error en products listener:", err);
+          setIsLoadingProducts(false);
+        }
+      );
+      
+      setProductsUnsub(() => unsubscribe);
+    } catch (error) {
+      console.error("Error al cargar productos:", error);
+      setIsLoadingProducts(false);
+    }
+  }, [productsUnsub, products.length]);
 
   // Limpiar suscripción a productos al desmontar
   useEffect(() => {

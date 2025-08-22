@@ -89,11 +89,11 @@ const LazyImage = ({
       ref={imgRef}
       src={imageSrc}
       alt={alt}
-      className={`${className} ${!imageLoaded ? 'image-loading' : 'image-loaded'}`}
+      className={`${className} image-loaded`}
       style={{
         transition: 'opacity 0.3s ease-in-out, filter 0.3s ease-in-out',
-        opacity: imageLoaded ? 1 : 0.5,
-        filter: imageLoaded ? 'none' : 'blur(5px)',
+        opacity: imageLoaded ? 1 : 1, // Siempre mostrar la imagen con opacidad completa
+        filter: imageLoaded ? 'none' : 'none', // Sin filtro de desenfoque
         ...style,
       }}
       loading="lazy"

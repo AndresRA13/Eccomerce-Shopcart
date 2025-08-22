@@ -50,7 +50,7 @@ export default function Admin() {
   const [productoEdicion, setProductoEdicion] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filteredProducts, setFilteredProducts] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState(products || []);
   const [activeSection, setActiveSection] = useState("productos");
   const [userSearch, setUserSearch] = useState("");
   const [userRoleFilter, setUserRoleFilter] = useState("");
@@ -70,9 +70,17 @@ export default function Admin() {
   }, [user]);
 
   useEffect(() => {
+    // Cargar productos y usuarios al montar el componente
+    console.log("Llamando a fetchProducts y fetchUsers");
     fetchProducts();
     fetchUsers();
-  }, []);
+    
+    // Inicializar filteredProducts con los productos existentes
+    if (products && products.length > 0) {
+      console.log("Inicializando filteredProducts con productos existentes:", products);
+      setFilteredProducts(products);
+    }
+  }, [fetchProducts, fetchUsers, products]);
 
   // Subscribe reviews
   useEffect(() => {
@@ -89,15 +97,22 @@ export default function Admin() {
     return () => unsub();
   }, []);
 
+  // Actualizar productos filtrados cuando cambian los productos o el término de búsqueda
   useEffect(() => {
-    if (searchTerm.trim()) {
-      const filtered = products.filter(product => 
-        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.description?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredProducts(filtered);
+    console.log("Products actualizados:", products);
+    // Siempre actualizar filteredProducts cuando products cambia
+    if (products && products.length > 0) {
+      if (searchTerm.trim()) {
+        const filtered = products.filter(product => 
+          product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          product.description?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        setFilteredProducts(filtered);
+      } else {
+        setFilteredProducts([...products]);
+      }
     } else {
-      setFilteredProducts(products);
+      setFilteredProducts([]);
     }
   }, [searchTerm, products]);
 
@@ -601,6 +616,7 @@ export default function Admin() {
               </div>
 
               <div className="table-container">
+                {console.log("Renderizando tabla con:", { products, filteredProducts })}
                 <table className="styled-table">
                   <thead>
                     <tr>
@@ -613,42 +629,60 @@ export default function Admin() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredProducts.map((p) => (
-                      <tr key={p.id}>
-                        <td>
-                          <div className="product-info">
-                            <div className="product-details">
-                              <span className="product-name">{p.name}</span>
+                    {filteredProducts && filteredProducts.length > 0 ? (
+                      filteredProducts.map((p) => (
+                        <tr key={p.id}>
+                          <td>
+                            <div className="product-info">
+                              <div className="product-details">
+                                <span className="product-name">{p.name}</span>
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                        <td>{formatPrice(p.price)}</td>
-                        <td>
-                          <span className={`status-badge ${p.stock > 0 ? 'completed' : 'pending'}`}>
-                            {p.stock > 0 ? `${p.stock} unidades` : "Agotado"}
-                          </span>
-                        </td>
-                        <td>{p.reviews ?? 0}</td>
-                        <td>
-                          <img 
-                            src={p.mainImage} 
-                            alt={p.name} 
-                            className="product-thumb"
-                            style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px' }}
-                          />
-                        </td>
-                        <td>
-                          <div className="action-buttons">
-                            <button onClick={() => handleEditar(p)} className="action-button" title="Editar">
-                              <i className="fas fa-pencil-alt"></i>
-                            </button>
-                            <button onClick={() => eliminarProducto(p.id)} className="action-button" title="Eliminar">
-                              <i className="fas fa-trash-alt"></i>
-                            </button>
-                          </div>
+                          </td>
+                          <td>{formatPrice(p.price)}</td>
+                          <td>
+                            <span className={`status-badge ${p.stock > 0 ? 'completed' : 'pending'}`}>
+                              {p.stock > 0 ? `${p.stock} unidades` : "Agotado"}
+                            </span>
+                          </td>
+                          <td>{p.reviews ?? 0}</td>
+                          <td>
+                            <img 
+                              src={p.mainImage} 
+                              alt={p.name} 
+                              className="product-thumb"
+                              style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px' }}
+                            />
+                          </td>
+                          <td>
+                            <div className="action-buttons">
+                              <button onClick={() => handleEditar(p)} className="action-button" title="Editar">
+                                <i className="fas fa-pencil-alt"></i>
+                              </button>
+                              <button onClick={() => eliminarProducto(p.id)} className="action-button" title="Eliminar">
+                                <i className="fas fa-trash-alt"></i>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="6" style={{ textAlign: 'center', padding: '20px' }}>
+                          {products.length === 0 ? (
+                            <div>
+                              <p>No hay productos disponibles.</p>
+                              <p>Agrega tu primer producto haciendo clic en "+ Agregar Producto"</p>
+                            </div>
+                          ) : (
+                            <div>
+                              <p>No se encontraron productos que coincidan con tu búsqueda.</p>
+                              <p>Intenta con otros términos o limpia el filtro.</p>
+                            </div>
+                          )}
                         </td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
