@@ -8,6 +8,10 @@ import {
   deleteDoc,
   doc,
   updateDoc,
+  onSnapshot,
+  getDocs,
+  query,
+  where,
 } from "firebase/firestore";
 import Navbar from "../components/Navbar";
 import { useNavigate } from "react-router-dom";
@@ -35,6 +39,11 @@ export default function Admin() {
     images: [],
     stock: "",
     mainImage: "",
+    rating: "",
+    reviews: "",
+    material: "",
+    color: "",
+    category: "",
   });
 
   const [editar, setEditar] = useState(false);
@@ -46,8 +55,16 @@ export default function Admin() {
   const [userSearch, setUserSearch] = useState("");
   const [userRoleFilter, setUserRoleFilter] = useState("");
 
+  // Reviews admin state
+  const [allReviews, setAllReviews] = useState([]);
+  const [selectedProductFilter, setSelectedProductFilter] = useState("");
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [editingReview, setEditingReview] = useState(null);
+  const [editReviewText, setEditReviewText] = useState("");
+  const [editReviewRating, setEditReviewRating] = useState(5);
+
   useEffect(() => {
-    if (!user || user.rol !== 'admin') {
+    if (!user || (user.rol !== 'admin' && user.role !== 'admin')) {
       navigate("/");
     }
   }, [user]);
@@ -55,6 +72,21 @@ export default function Admin() {
   useEffect(() => {
     fetchProducts();
     fetchUsers();
+  }, []);
+
+  // Subscribe reviews
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "reviews"), (snap) => {
+      const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      // sort by createdAt desc if exists
+      items.sort((a, b) => {
+        const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt?.getTime?.() || 0);
+        const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt?.getTime?.() || 0);
+        return tb - ta;
+      });
+      setAllReviews(items);
+    });
+    return () => unsub();
   }, []);
 
   useEffect(() => {
@@ -117,21 +149,41 @@ export default function Admin() {
     }));
   };
 
-  const agregarProducto = async () => {
-    const { name, price, images, stock, mainImage } = nuevo;
+  const validarProducto = () => {
+    const { name, price, images, stock, mainImage, rating, reviews } = nuevo;
     if (!name || !price || images.length < 1 || !stock || !mainImage) {
       Swal.fire("Error", "Todos los campos son obligatorios y debe seleccionar una imagen principal.", "error");
-      return;
+      return false;
     }
+    const numRating = rating === "" ? 0 : parseFloat(rating);
+    if (isNaN(numRating) || numRating < 0 || numRating > 5) {
+      Swal.fire("Error", "El rating debe estar entre 0 y 5 (puedes usar pasos de 0.5).", "error");
+      return false;
+    }
+    const numReviews = reviews === "" ? 0 : parseInt(reviews);
+    if (isNaN(numReviews) || numReviews < 0) {
+      Swal.fire("Error", "Las reviews deben ser un número mayor o igual a 0.", "error");
+      return false;
+    }
+    return true;
+  };
 
+  const agregarProducto = async () => {
+    if (!validarProducto()) return;
+    const { name, price, images, stock, mainImage, description, rating, reviews, material, color, category } = nuevo;
     try {
       await addDoc(collection(db, "products"), {
         name,
         price: parseFloat(price),
-        description: nuevo.description || "",
+        description: description || "",
         images,
         mainImage,
         stock: parseInt(stock),
+        rating: rating === "" ? 0 : parseFloat(rating),
+        reviews: reviews === "" ? 0 : parseInt(reviews),
+        material: material || "",
+        color: color || "",
+        category: category || "",
       });
 
       Swal.fire("✅ Producto agregado correctamente.", "", "success");
@@ -143,12 +195,8 @@ export default function Admin() {
   };
 
   const actualizarProducto = async () => {
-    const { name, price, description, stock, images, mainImage } = nuevo;
-
-    if (!name || !price || !stock || !mainImage) {
-      Swal.fire("Error", "Todos los campos son obligatorios y debe seleccionar una imagen principal.", "error");
-      return;
-    }
+    if (!validarProducto()) return;
+    const { name, price, description, stock, images, mainImage, rating, reviews, material, color, category } = nuevo;
 
     const productoRef = doc(db, "products", productoEdicion.id);
     const updatedImages = images.length ? images : productoEdicion.images;
@@ -161,6 +209,11 @@ export default function Admin() {
         images: updatedImages,
         mainImage,
         stock: parseInt(stock),
+        rating: rating === "" ? (productoEdicion.rating || 0) : parseFloat(rating),
+        reviews: reviews === "" ? (productoEdicion.reviews || 0) : parseInt(reviews),
+        material: material ?? (productoEdicion.material || ""),
+        color: color ?? (productoEdicion.color || ""),
+        category: category ?? (productoEdicion.category || ""),
       });
 
       Swal.fire("✅ Producto actualizado correctamente.", "", "success");
@@ -184,9 +237,9 @@ export default function Admin() {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-    await deleteDoc(doc(db, "products", id));
+          await deleteDoc(doc(db, "products", id));
           Swal.fire("Eliminado", "El producto ha sido eliminado.", "success");
-    fetchProducts();
+          fetchProducts();
         } catch (error) {
           Swal.fire("Error", "No se pudo eliminar el producto.", "error");
         }
@@ -227,6 +280,11 @@ export default function Admin() {
       images: producto.images || [],
       stock: producto.stock || 0,
       mainImage: producto.mainImage || producto.images[0],
+      rating: producto.rating ?? "",
+      reviews: producto.reviews ?? "",
+      material: producto.material ?? "",
+      color: producto.color ?? "",
+      category: producto.category ?? "",
     });
     setShowModal(true);
   };
@@ -239,6 +297,11 @@ export default function Admin() {
       images: [],
       stock: "",
       mainImage: "",
+      rating: "",
+      reviews: "",
+      material: "",
+      color: "",
+      category: "",
     });
     setEditar(false);
     setShowModal(false);
@@ -279,6 +342,65 @@ export default function Admin() {
     });
   };
 
+  // Helpers para recalcular rating y cantidad
+  const recalcProductAggregates = async (productId) => {
+    const q = query(collection(db, 'reviews'), where('productId', '==', productId));
+    const snap = await getDocs(q);
+    const arr = snap.docs.map(d => d.data());
+    const count = arr.length;
+    const avg = count > 0 ? Math.round((arr.reduce((s, r) => s + (parseFloat(r.rating) || 0), 0) / count) * 10) / 10 : 0;
+    await updateDoc(doc(db, 'products', productId), { rating: avg, reviews: count });
+  };
+
+  const startEditReview = (review) => {
+    setEditingReview(review);
+    setEditReviewText(review.text || "");
+    setEditReviewRating(review.rating || 0);
+    setReviewModalOpen(true);
+  };
+
+  const saveEditReview = async () => {
+    if (!editingReview) return;
+    try {
+      await updateDoc(doc(db, 'reviews', editingReview.id), {
+        text: (editReviewText || '').trim(),
+        rating: parseFloat(editReviewRating),
+      });
+      await recalcProductAggregates(editingReview.productId);
+      setReviewModalOpen(false);
+      setEditingReview(null);
+      Swal.fire('Review actualizada', '', 'success');
+    } catch (e) {
+      Swal.fire('Error', 'No se pudo actualizar la review', 'error');
+    }
+  };
+
+  const deleteReview = async (review) => {
+    Swal.fire({
+      title: '¿Eliminar review?',
+      text: 'Esta acción no se puede deshacer',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+    }).then(async (result) => {
+      if (!result.isConfirmed) return;
+      try {
+        await deleteDoc(doc(db, 'reviews', review.id));
+        await recalcProductAggregates(review.productId);
+        Swal.fire('Eliminada', 'La review fue eliminada', 'success');
+      } catch (e) {
+        Swal.fire('Error', 'No se pudo eliminar la review', 'error');
+      }
+    });
+  };
+
+  const reviewsToShow = selectedProductFilter
+    ? allReviews.filter(r => r.productId === selectedProductFilter)
+    : allReviews;
+
   return (
     <>
       <Navbar />
@@ -314,6 +436,15 @@ export default function Admin() {
               >
                 <i className="fas fa-chart-bar"></i>
                 <span>Analytics</span>
+              </div>
+            </li>
+            <li>
+              <div
+                className={`sidebar-link ${activeSection === "reviews" ? "active" : ""}`}
+                onClick={() => setActiveSection("reviews")}
+              >
+                <i className="fas fa-comments"></i>
+                <span>Reviews</span>
               </div>
             </li>
           </ul>
@@ -465,54 +596,52 @@ export default function Admin() {
                   </div>
                   <button onClick={() => setShowModal(true)} className="button primary">
                     + Agregar Producto
-              </button>
+                  </button>
                 </div>
               </div>
 
               <div className="table-container">
-              <table className="styled-table">
-                <thead>
-                  <tr>
+                <table className="styled-table">
+                  <thead>
+                    <tr>
                       <th>Producto</th>
-                    <th>Precio</th>
-                    <th>Stock</th>
+                      <th>Precio</th>
+                      <th>Stock</th>
+                      <th>Reviews</th>
                       <th>Imagen Principal</th>
                       <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
+                    </tr>
+                  </thead>
+                  <tbody>
                     {filteredProducts.map((p) => (
-                    <tr key={p.id}>
+                      <tr key={p.id}>
                         <td>
                           <div className="product-info">
                             <div className="product-details">
                               <span className="product-name">{p.name}</span>
-                              <span className="product-description">
-                                {p.description?.substring(0, 50)}
-                                {p.description?.length > 50 ? "..." : ""}
-                              </span>
                             </div>
                           </div>
                         </td>
-                      <td>{formatPrice(p.price)}</td>
+                        <td>{formatPrice(p.price)}</td>
                         <td>
                           <span className={`status-badge ${p.stock > 0 ? 'completed' : 'pending'}`}>
                             {p.stock > 0 ? `${p.stock} unidades` : "Agotado"}
                           </span>
                         </td>
-                      <td>
+                        <td>{p.reviews ?? 0}</td>
+                        <td>
                           <img 
                             src={p.mainImage} 
                             alt={p.name} 
                             className="product-thumb"
                             style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px' }}
                           />
-                      </td>
-                      <td>
+                        </td>
+                        <td>
                           <div className="action-buttons">
                             <button onClick={() => handleEditar(p)} className="action-button" title="Editar">
-                          <i className="fas fa-pencil-alt"></i>
-                        </button>
+                              <i className="fas fa-pencil-alt"></i>
+                            </button>
                             <button onClick={() => eliminarProducto(p.id)} className="action-button" title="Eliminar">
                               <i className="fas fa-trash-alt"></i>
                             </button>
@@ -570,8 +699,8 @@ export default function Admin() {
                           <span className={`role-badge ${usuario.rol === 'admin' ? 'admin' : 'user'}`}>
                             {usuario.rol === 'admin' ? 'Admin' : 'Usuario'}
                           </span>
-                      </td>
-                      <td>
+                        </td>
+                        <td>
                           <div className="action-buttons">
                             {usuario.email !== 'admin@gmail.com' && (
                               <>
@@ -588,57 +717,257 @@ export default function Admin() {
                                   className="action-button delete"
                                   title="Eliminar usuario"
                                 >
-                          <i className="fas fa-trash-alt"></i>
-                        </button>
+                                  <i className="fas fa-trash-alt"></i>
+                                </button>
                               </>
                             )}
                           </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
+          ) : activeSection === "reviews" ? (
+            <div className="content-section">
+              <div className="section-header" style={{alignItems:'center'}}>
+                <h2 className="section-title">Administrar Reviews</h2>
+                <div style={{display:'flex', gap:12, alignItems:'center', flexWrap:'wrap'}}>
+                  <select
+                    className="input-field"
+                    value={selectedProductFilter}
+                    onChange={(e)=>setSelectedProductFilter(e.target.value)}
+                    style={{minWidth:220, maxWidth:320}}
+                  >
+                    <option value="">Todas los productos</option>
+                    {products.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="table-container">
+                <table className="styled-table">
+                  <thead>
+                    <tr>
+                      <th>Producto</th>
+                      <th>Rating</th>
+                      <th>Texto</th>
+                      <th>Fecha</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reviewsToShow.map(r => {
+                      const prod = products.find(p => p.id === r.productId);
+                      const fecha = r.createdAt?.toDate ? r.createdAt.toDate() : (r.createdAt || null);
+                      return (
+                        <tr key={r.id}>
+                          <td>{prod?.name || r.productId}</td>
+                          <td>{r.rating ?? 0}</td>
+                          <td>{r.text?.substring(0, 80)}{(r.text?.length||0) > 80 ? '…' : ''}</td>
+                          <td>{fecha ? new Date(fecha).toLocaleString() : '-'}</td>
+                          <td>
+                            <div className="action-buttons">
+                              <button className="action-button" title="Editar" onClick={()=>startEditReview(r)}>
+                                <i className="fas fa-pencil-alt"></i>
+                              </button>
+                              <button className="action-button delete" title="Eliminar" onClick={()=>deleteReview(r)}>
+                                <i className="fas fa-trash-alt"></i>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {reviewModalOpen && (
+                <div className="modal">
+                  <div className="modal-content">
+                    <button
+                      className="modal-close"
+                      aria-label="Cerrar"
+                      onClick={()=>{setReviewModalOpen(false); setEditingReview(null);}}
+                    >
+                      ×
+                    </button>
+                    <h3>Editar review</h3>
+                    <div className="modal-form">
+                      <div className="form-subtitle">Datos de la review</div>
+                      <label className="field-label" htmlFor="review-rating">Rating</label>
+                      <select
+                        className="input-field"
+                        value={editReviewRating}
+                        onChange={(e)=>setEditReviewRating(e.target.value)}
+                        id="review-rating"
+                        style={{minWidth:'100%'}}
+                      >
+                        {[0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5].map(v => (
+                          <option key={v} value={v}>{v}</option>
+                        ))}
+                      </select>
+                      <label className="field-label" htmlFor="review-user">Usuario</label>
+                      <input
+                        type="text"
+                        className="input-field"
+                        placeholder="Usuario (solo lectura)"
+                        value={editingReview?.user || 'Anónimo'}
+                        readOnly
+                        id="review-user"
+                        style={{minWidth:'100%'}}
+                      />
+                      <label className="field-label" htmlFor="review-text">Texto</label>
+                      <textarea
+                        className="input-field textarea"
+                        value={editReviewText}
+                        onChange={(e)=>setEditReviewText(e.target.value)}
+                        placeholder="Texto de la review"
+                        id="review-text"
+                      />
+                    </div>
+                    <div className="modal-footer">
+                      <button className="button primary" onClick={saveEditReview}>Guardar</button>
+                      <button className="button delete" onClick={()=>{setReviewModalOpen(false); setEditingReview(null);}}>Cancelar</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : activeSection === "analytics" ? (
+            <div>
+              {/* analytics existente */}
             </div>
           ) : null}
 
           {showModal && (
             <div className="modal">
               <div className="modal-content">
+                <button
+                  className="modal-close"
+                  aria-label="Cerrar"
+                  onClick={resetForm}
+                >
+                  ×
+                </button>
                 <h3>{editar ? "Editar Producto" : "Agregar Producto"}</h3>
+                <div className="modal-form">
+                <div className="form-subtitle">Información básica</div>
+                <label className="field-label" htmlFor="name">Nombre</label>
                 <input
                   type="text"
                   name="name"
+                  id="name"
                   value={nuevo.name}
                   onChange={handleChange}
                   placeholder="Nombre del producto"
                   className="input-field"
                 />
+                <label className="field-label" htmlFor="price">Precio</label>
                 <input
                   type="number"
                   name="price"
+                  id="price"
                   value={nuevo.price}
                   onChange={handleChange}
                   placeholder="Precio"
                   className="input-field"
                 />
+                <label className="field-label" htmlFor="stock">Stock</label>
                 <input
                   type="number"
                   name="stock"
+                  id="stock"
                   value={nuevo.stock}
                   onChange={handleChange}
                   placeholder="Stock disponible"
                   className="input-field"
                 />
+                {/* Campos de rating y reviews */}
+                <div className="form-subtitle">Valoración</div>
+                <div style={{display: 'flex', flexDirection: 'column', gap: 12}}>
+                  <label className="field-label" htmlFor="rating">Rating</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    max="5"
+                    name="rating"
+                    id="rating"
+                    value={nuevo.rating}
+                    onChange={handleChange}
+                    placeholder="Rating (0 - 5)"
+                    className="input-field"
+                    style={{minWidth: '100%'}}
+                  />
+                  <label className="field-label" htmlFor="reviews"># Reviews</label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    name="reviews"
+                    id="reviews"
+                    value={nuevo.reviews}
+                    onChange={handleChange}
+                    placeholder="# Reviews"
+                    className="input-field"
+                    style={{minWidth: '100%'}}
+                  />
+                </div>
+                {/* Campos Material/Color/Categoría */}
+                <div className="form-subtitle">Características</div>
+                <div style={{display: 'flex', flexDirection: 'column', gap: 12}}>
+                  <label className="field-label" htmlFor="material">Material</label>
+                  <input
+                    type="text"
+                    name="material"
+                    id="material"
+                    value={nuevo.material}
+                    onChange={handleChange}
+                    placeholder="Material (ej. Plástico)"
+                    className="input-field"
+                    style={{minWidth: '100%'}}
+                  />
+                  <label className="field-label" htmlFor="color">Color</label>
+                  <input
+                    type="text"
+                    name="color"
+                    id="color"
+                    value={nuevo.color}
+                    onChange={handleChange}
+                    placeholder="Color (ej. Negro)"
+                    className="input-field"
+                    style={{minWidth: '100%'}}
+                  />
+                  <label className="field-label" htmlFor="category">Categoría</label>
+                  <input
+                    type="text"
+                    name="category"
+                    id="category"
+                    value={nuevo.category}
+                    onChange={handleChange}
+                    placeholder="Categoría (ej. Accesorios)"
+                    className="input-field"
+                    style={{minWidth: '100%'}}
+                  />
+                </div>
+                <div className="form-subtitle">Descripción</div>
+                <label className="field-label" htmlFor="description">Descripción</label>
                 <textarea
                   name="description"
+                  id="description"
                   value={nuevo.description}
                   onChange={handleChange}
                   placeholder="Descripción del producto"
                   className="input-field textarea"
                 ></textarea>
                 
-                <div className="image-upload-section">
+                <div className="form-subtitle">Imágenes</div>
+                <label className="field-label">Cargar imágenes (1 a 4)</label>
+                <div className="image-upload-section" style={{marginTop: '0.5rem'}}>
                   <input
                     type="file"
                     accept="image/*"
@@ -648,8 +977,8 @@ export default function Admin() {
                   />
                   {nuevo.images.length > 0 && (
                     <>
-                      <p className="text-sm text-gray-600 mt-2">Selecciona la imagen principal:</p>
-                      <div className="image-preview-container">
+                      <p className="text-sm text-gray-600 mt-2">Selecciona la imagen principal</p>
+                      <div className="image-preview-container" style={{justifyContent:'flex-start'}}>
                         {nuevo.images.map((img, idx) => (
                           <div key={idx} className="image-preview-wrapper">
                             <img
@@ -671,17 +1000,17 @@ export default function Admin() {
                     </>
                   )}
                 </div>
-
+                </div>
                 <div className="modal-footer">
-                <button
-                  onClick={editar ? actualizarProducto : agregarProducto}
-                  className="button primary"
-                >
-                  {editar ? "Actualizar" : "Agregar"}
-                </button>
+                  <button
+                    onClick={editar ? actualizarProducto : agregarProducto}
+                    className="button primary"
+                  >
+                    {editar ? "Actualizar" : "Agregar"}
+                  </button>
                   <button onClick={resetForm} className="button delete">
-                  Cancelar
-                </button>
+                    Cancelar
+                  </button>
                 </div>
               </div>
             </div>

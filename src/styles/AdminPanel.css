@@ -40,7 +40,7 @@ body, .admin-panel, .main-content, .sidebar, .sidebar-logo, .sidebar-link, .sect
 }
 
 .sidebar-logo i {
-  color: #2563eb;
+  color: #16a34a;
 }
 
 .sidebar ul {
@@ -73,8 +73,8 @@ body, .admin-panel, .main-content, .sidebar, .sidebar-logo, .sidebar-link, .sect
 
 .sidebar-link:hover,
 .sidebar-link.active {
-  background: rgba(37, 99, 235, 0.08);
-  color: #2563eb;
+  background: rgba(22, 163, 74, 0.10);
+  color: #16a34a;
 }
 
 .sidebar-link i {
@@ -86,7 +86,7 @@ body, .admin-panel, .main-content, .sidebar, .sidebar-logo, .sidebar-link, .sect
 
 .sidebar-link.active i,
 .sidebar-link:hover i {
-  color: #2563eb;
+  color: #16a34a;
 }
 
 .main-content {
@@ -239,8 +239,8 @@ body, .admin-panel, .main-content, .sidebar, .sidebar-logo, .sidebar-link, .sect
 
 .search-input:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+  border-color: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22,163,74,0.12);
 }
 
 .search-icon {
@@ -378,12 +378,12 @@ body, .admin-panel, .main-content, .sidebar, .sidebar-logo, .sidebar-link, .sect
 }
 
 .button.primary {
-  background: #2563eb;
+  background: #16a34a;
   color: white;
 }
 
 .button.primary:hover {
-  background: #1d4ed8;
+  background: #15803d;
 }
 
 .button.delete {
@@ -407,19 +407,26 @@ body, .admin-panel, .main-content, .sidebar, .sidebar-logo, .sidebar-link, .sect
   justify-content: center;
   align-items: center;
   z-index: 9999;
-  padding: 1rem;
+  padding: 1.2rem;
   backdrop-filter: blur(2px);
 }
 
 .modal-content {
-  background: #f8fafc;
-  border-radius: 18px;
-  padding: 2.5rem 2rem 2rem 2rem;
-  width: 100%;
-  max-width: 540px;
-  box-shadow: 0 8px 32px rgba(30,41,59,0.18), 0 2px 8px rgba(0,0,0,0.08);
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 1.6rem 1.2rem 1.2rem 1.2rem;
+  width: min(92vw, 560px) !important;
+  max-width: 560px !important;
+  box-shadow: 0 16px 36px rgba(2,6,23,0.25), 0 4px 10px rgba(2,6,23,0.08);
   position: relative;
-  animation: modalFadeIn 0.3s;
+  animation: modalFadeIn 0.25s ease;
+  border-top: 6px solid #16a34a;
+  max-height: 85vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
 }
 
 @keyframes modalFadeIn {
@@ -430,9 +437,51 @@ body, .admin-panel, .main-content, .sidebar, .sidebar-logo, .sidebar-link, .sect
 .modal-content h3 {
   font-size: 1.35rem;
   font-weight: 700;
-  color: #1e293b;
-  margin: 0 0 1.5rem 0;
-  letter-spacing: -0.5px;
+  color: #0f172a;
+  margin: 0 0 1.2rem 0;
+  letter-spacing: -0.3px;
+}
+
+/* Campos dentro del modal más compactos y 80% de ancho */
+.modal-content .input-field {
+  height: 46px;
+  width: 80%;
+  max-width: 80%;
+  margin-left: auto;
+  margin-right: auto;
+  display: block;
+}
+.modal-content .textarea {
+  min-height: 120px;
+  width: 80%;
+  max-width: 80%;
+  margin-left: auto;
+  margin-right: auto;
+  display: block;
+}
+
+/* Botón de cierre del modal */
+.modal-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #16a34a;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(2,6,23,0.08);
+}
+.modal-close:hover {
+  background: #16a34a;
+  color: #fff;
 }
 
 .input-field, .textarea {
@@ -451,13 +500,48 @@ body, .admin-panel, .main-content, .sidebar, .sidebar-logo, .sidebar-link, .sect
 }
 .input-field:focus, .textarea:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37,99,235,0.10);
+  border-color: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22,163,74,0.12);
 }
 
 .textarea {
   min-height: 110px;
   resize: vertical;
+}
+
+/* Layout limpio dentro del modal */
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.modal-content .field-label,
+.modal-content .form-subtitle {
+  width: 80%;
+  margin-left: auto;
+  margin-right: auto;
+}
+.field-label {
+  font-size: 0.82rem;
+  color: #64748b;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.form-subtitle {
+  margin-top: 6px;
+  margin-bottom: 4px;
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 0.95rem;
+}
+.modal-content .image-upload-section {
+  width: 80%;
+  margin: 0.5rem auto 0;
+}
+.modal-content .image-preview-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 12px;
 }
 
 .image-upload-section {
@@ -500,11 +584,11 @@ body, .admin-panel, .main-content, .sidebar, .sidebar-logo, .sidebar-link, .sect
   transition: box-shadow 0.2s, border 0.2s;
 }
 .image-preview.selected, .image-preview-wrapper.selected {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37,99,235,0.13);
+  border-color: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22,163,74,0.16);
 }
 .image-preview:hover {
-  box-shadow: 0 0 0 2px #2563eb;
+  box-shadow: 0 0 0 2px #16a34a;
 }
 .image-select-radio {
   position: absolute;
@@ -513,17 +597,47 @@ body, .admin-panel, .main-content, .sidebar, .sidebar-logo, .sidebar-link, .sect
   width: 1.1rem;
   height: 1.1rem;
   cursor: pointer;
-  accent-color: #2563eb;
+  accent-color: #16a34a;
   background: #fff;
   border-radius: 50%;
-  border: 1.5px solid #2563eb;
+  border: 1.5px solid #16a34a;
 }
 
 .modal-footer {
   display: flex;
-  justify-content: flex-end;
-  gap: 1.2rem;
-  margin-top: 2.2rem;
+  justify-content: center;
+  gap: 0.8rem;
+  margin-top: 1.2rem;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 1rem;
+  width: 80%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Botones del footer del modal minimalistas */
+.modal-content .modal-footer .button.primary {
+  background: #16a34a;
+  color: #fff;
+  border: 1px solid #16a34a;
+  box-shadow: none;
+  padding: 0.8rem 1.4rem;
+  border-radius: 10px;
+}
+.modal-content .modal-footer .button.primary:hover {
+  background: #15803d;
+}
+.modal-content .modal-footer .button.delete {
+  background: transparent;
+  color: #dc2626;
+  border: 1.5px solid #dc2626;
+  box-shadow: none;
+  padding: 0.8rem 1.4rem;
+  border-radius: 10px;
+}
+.modal-content .modal-footer .button.delete:hover {
+  background: #dc2626;
+  color: #fff;
 }
 
 .button.primary {
@@ -592,7 +706,7 @@ body, .admin-panel, .main-content, .sidebar, .sidebar-logo, .sidebar-link, .sect
   }
   
   .sidebar {
-    width: 100%;
+    width: auto;
     height: auto;
     position: relative;
     padding: 1.5rem 1rem 1rem 1rem;
@@ -680,23 +794,31 @@ body, .admin-panel, .main-content, .sidebar, .sidebar-logo, .sidebar-link, .sect
 
 @media (max-width: 600px) {
   .modal {
-    padding: 0.2rem;
+    padding: 0.4rem;
     align-items: center;
     justify-content: center;
     z-index: 9999;
   }
   .modal-content {
-    padding: 1rem 0.7rem 0.7rem 0.7rem;
-    max-width: 92vw;
+    padding: 1rem 0.9rem 0.9rem 0.9rem;
+    max-width: 94vw;
     min-width: 0;
-    border-radius: 18px;
+    border-radius: 14px;
     margin: 0 auto;
-    box-shadow: 0 8px 32px rgba(30,41,59,0.18), 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 12px 28px rgba(2,6,23,0.22), 0 4px 10px rgba(2,6,23,0.08);
     background: #fff;
     display: flex;
     flex-direction: column;
     align-items: center;
     border: 1.5px solid #e2e8f0;
+  }
+  .modal-content .input-field,
+  .modal-content .textarea,
+  .modal-content .field-label,
+  .modal-content .form-subtitle,
+  .modal-footer {
+    width: 92%;
+    max-width: 92%;
   }
   .modal-content h3 {
     font-size: 1.1rem;
@@ -707,6 +829,12 @@ body, .admin-panel, .main-content, .sidebar, .sidebar-logo, .sidebar-link, .sect
     font-size: 0.97rem;
     margin-bottom: 0.7rem;
     border-radius: 8px;
+  }
+  .modal-content .input-field {
+    height: 42px;
+  }
+  .modal-content .textarea {
+    min-height: 100px;
   }
   .image-upload-section {
     padding: 0.5rem;
@@ -736,7 +864,7 @@ body, .admin-panel, .main-content, .sidebar, .sidebar-logo, .sidebar-link, .sect
     min-width: 100px;
     max-width: 160px;
     flex: 1 1 auto;
-    box-shadow: 0 2px 8px rgba(37,99,235,0.04);
+    box-shadow: 0 2px 8px rgba(22,163,74,0.08);
   }
   .analytics-card {
     min-width: 0;

@@ -5,13 +5,16 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../firebase/config";
-import Swal from "sweetalert2";
+
+// Importar componentes reutilizables
+import { Button, LazyImage, Loader } from "../components/common";
 
 export default function Carrito() {
   const navigate = useNavigate();
   const [carrito, setCarrito] = useState([]);
   const [userUid, setUserUid] = useState(null);
   const [cargando, setCargando] = useState(true);
+  const [promoCode, setPromoCode] = useState("");
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -75,30 +78,12 @@ export default function Carrito() {
   };
 
   const eliminarDelCarrito = (id) => {
-    Swal.fire({
-      title: '¿Estás seguro?',
-      text: "¡No podrás revertir esta acción!",
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Sí, eliminar',
-      cancelButtonText: 'Cancelar'
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        const nuevoCarrito = carrito.filter((item) => item.id !== id);
-        setCarrito(nuevoCarrito);
-        await guardarCarritoEnFirestore(nuevoCarrito);
-
-        Swal.fire({
-          title: 'Eliminado',
-          text: 'El producto ha sido eliminado correctamente.',
-          icon: 'success'
-        }).then(() => {
-          window.location.reload();
-        });
-      }
-    });
+    if (confirm("¿Estás seguro que deseas eliminar este producto del carrito?")) {
+      const nuevoCarrito = carrito.filter((item) => item.id !== id);
+      setCarrito(nuevoCarrito);
+      guardarCarritoEnFirestore(nuevoCarrito);
+      alert("El producto ha sido eliminado del carrito.");
+    }
   };
 
   const actualizarCantidad = async (id, nuevaCantidad) => {
@@ -115,13 +100,29 @@ export default function Carrito() {
     0
   );
 
+  const shippingFee = 0; // Free shipping
+  const tax = subtotal * 0.02; // 2% tax
+  const total = subtotal + shippingFee + tax;
+
+  const applyPromoCode = () => {
+    if (promoCode.trim()) {
+      alert("El código promocional ha sido aplicado.");
+      setPromoCode("");
+    }
+  };
+
+  const placeOrder = () => {
+    if (confirm(`¿Proceder con la compra? Total a pagar: $${total.toFixed(2)}`)) {
+      navigate("/whatsapp");
+    }
+  };
+
   if (cargando) {
     return (
       <>
         <Navbar />
         <div className="loader-container">
-          <div className="spinner"></div>
-          <p className="loader-text">Cargando tu carrito...</p>
+          <Loader size="lg" color="#ea580c" text="Cargando tu carrito..." />
         </div>
 
         <style>{`
@@ -134,27 +135,6 @@ export default function Carrito() {
             text-align: center;
             background-color: #fff;
           }
-
-          .spinner {
-            border: 8px solid #f3f3f3;
-            border-top: 8px solid #3498db;
-            border-radius: 50%;
-            width: 70px;
-            height: 70px;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-          }
-
-          .loader-text {
-            font-size: 20px;
-            color: #333;
-            font-weight: bold;
-          }
-
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
         `}</style>
       </>
     );
@@ -163,211 +143,414 @@ export default function Carrito() {
   return (
     <>
       <Navbar />
-      <div className="carrito-container">
-        <h2 className="titulo">🛒 Mi Carrito De Compras</h2>
+      <div className="cart-container">
+        <div className="cart-layout">
+          {/* Left Side - Your Cart */}
+          <div className="cart-section">
+            <h2 className="cart-title">
+              Your <span className="highlight">Cart</span>
+            </h2>
+            <p className="item-count">{carrito.length} Items</p>
 
-        {carrito.length === 0 ? (
-          <p className="vacio">No tienes productos en el carrito.</p>
-        ) : (
-          <>
-            <table className="tabla-carrito">
-              <thead>
-                <tr>
-                  <th>Imagen</th>
-                  <th>Producto</th>
-                  <th>Precio</th>
-                  <th>Cantidad</th>
-                  <th>Total</th>
-                  <th>Acción</th>
-                </tr>
-              </thead>
-              <tbody>
-                {carrito.map((producto) => (
-                  <tr key={producto.id}>
-                    <td>
-                      <img
-                        src={
-                          producto.mainImage ||
-                          producto.mainimg ||
-                          producto.images?.[0] ||
-                          ""
-                        }
-                        alt={producto.name}
-                        className="imagen-producto"
-                      />
-                    </td>
-                    <td className="nombre">{producto.name}</td>
-                    <td>${producto.price.toFixed(2)}</td>
-                    <td>
-                      <input
-                        type="number"
-                        min="1"
-                        value={producto.quantity}
-                        onChange={(e) =>
-                          actualizarCantidad(producto.id, parseInt(e.target.value))
-                        }
-                        className="input-cantidad"
-                      />
-                    </td>
-                    <td>${(producto.price * producto.quantity).toFixed(2)}</td>
-                    <td>
-                      <button
-                        className="btn-eliminar"
-                        onClick={() => eliminarDelCarrito(producto.id)}
-                      >
-                        Eliminar
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            <div className="resumen">
-              <p className="subtotal">
-                Subtotal: <strong>${subtotal.toFixed(2)}</strong>
-              </p>
-              <div className="botones">
-                <button
-                  className="btn-vaciar"
+            {carrito.length === 0 ? (
+              <div className="empty-cart">
+                <p>No tienes productos en el carrito.</p>
+                <Button 
                   onClick={() => navigate("/productos")}
+                  variant="link"
+                  className="continue-shopping-btn"
                 >
-                  Seguir comprando
-                </button>
-                <button
-                  className="btn-comprar"
-                  onClick={() => navigate("/whatsapp")}
+                  <i className="fas fa-arrow-left"></i>
+                  Continue Shopping
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="cart-table">
+                  <div className="table-header">
+                    <span>Product Details</span>
+                    <span>Price</span>
+                    <span>Quantity</span>
+                    <span>Subtotal</span>
+                  </div>
+                  
+                  {carrito.map((producto) => (
+                    <div key={producto.id} className="cart-item">
+                      <div className="product-details">
+                        <LazyImage
+                          src={
+                            producto.mainImage ||
+                            producto.mainimg ||
+                            producto.images?.[0] ||
+                            ""
+                          }
+                          alt={producto.name}
+                          className="product-image"
+                          width={60}
+                          height={60}
+                        />
+                        <div className="product-info">
+                          <h3 className="product-name">{producto.name}</h3>
+                          <Button 
+                            onClick={() => eliminarDelCarrito(producto.id)}
+                            variant="link"
+                            size="sm"
+                            className="remove-link"
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <div className="product-price">
+                        ${producto.price.toFixed(2)}
+                      </div>
+                      
+                      <div className="product-quantity">
+                        <input
+                          type="number"
+                          min="1"
+                          value={producto.quantity}
+                          onChange={(e) =>
+                            actualizarCantidad(producto.id, parseInt(e.target.value))
+                          }
+                          className="quantity-input"
+                        />
+                      </div>
+                      
+                      <div className="product-subtotal">
+                        ${(producto.price * producto.quantity).toFixed(2)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="continue-shopping">
+                  <Button
+                    onClick={() => navigate("/productos")}
+                    variant="link"
+                    className="continue-shopping-btn"
+                  >
+                    <i className="fas fa-arrow-left"></i>
+                    Continue Shopping
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Right Side - Order Summary */}
+          <div className="order-summary-section">
+            <h3 className="order-summary-title">Order Summary</h3>
+            
+            <div className="summary-field">
+              <label>SELECT ADDRESS</label>
+              <Button 
+                className="address-selector"
+                variant="secondary"
+                fullWidth
+              >
+                Select Address
+                <i className="fas fa-arrow-right"></i>
+              </Button>
+            </div>
+
+            <div className="summary-field">
+              <label>PROMO CODE</label>
+              <div className="promo-input-group">
+                <input
+                  type="text"
+                  placeholder="Enter promo code"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value)}
+                  className="promo-input"
+                />
+                <Button 
+                  onClick={applyPromoCode}
+                  variant="primary"
+                  className="apply-btn"
                 >
-                  Proceder al Pago
-                </button>
+                  Apply
+                </Button>
               </div>
             </div>
-          </>
-        )}
+
+            <div className="cost-breakdown">
+              <div className="cost-row">
+                <span>Price:</span>
+                <span>${subtotal.toFixed(2)}</span>
+              </div>
+              <div className="cost-row">
+                <span>Shipping Fee:</span>
+                <span className="free">Free</span>
+              </div>
+              <div className="cost-row">
+                <span>Tax (2%):</span>
+                <span>${tax.toFixed(2)}</span>
+              </div>
+              <div className="cost-row total">
+                <span>Total:</span>
+                <span>${total.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <Button 
+              onClick={placeOrder}
+              disabled={carrito.length === 0}
+              variant="primary"
+              size="lg"
+              fullWidth
+              className="place-order-btn"
+            >
+              Place Order
+            </Button>
+          </div>
+        </div>
       </div>
 
       <style>{`
-        .carrito-container {
-          padding: 40px;
-          max-width: 1100px;
+        .cart-container {
+          padding: 30px;
+          background: #f8fafc;
+          min-height: 100vh;
+        }
+
+        .cart-layout {
+          max-width: 1200px;
           margin: 0 auto;
-          background-color: #fdfdfd;
+          display: grid;
+          grid-template-columns: 1fr 400px;
+          gap: 30px;
         }
 
-        .titulo {
-          font-size: 28px;
-          font-weight: bold;
-          margin-bottom: 25px;
-          color: #222;
-        }
-
-        .vacio {
-          font-size: 18px;
-          color: #555;
-        }
-
-        .tabla-carrito {
-          width: 100%;
-          border-collapse: collapse;
-          margin-bottom: 30px;
-          background-color: #ffffff;
+        /* Left Side - Your Cart */
+        .cart-section {
+          background: #374151;
           border-radius: 12px;
-          overflow: hidden;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          padding: 30px;
+          color: white;
         }
 
-        .tabla-carrito th,
-        .tabla-carrito td {
-          padding: 16px;
-          text-align: center;
-          border-bottom: 1px solid #eee;
+        .cart-title {
+          font-size: 32px;
+          font-weight: 700;
+          margin-bottom: 10px;
         }
 
-        .tabla-carrito thead {
-          background-color: #f0f0f5;
-          color: #333;
+        .highlight {
+          color: #ea580c;
         }
 
-        .imagen-producto {
-          width: 70px;
-          height: 70px;
-          object-fit: cover;
-          border-radius: 10px;
+        .item-count {
+          color: #d1d5db;
+          font-size: 16px;
+          margin-bottom: 25px;
         }
 
-        .btn-eliminar {
-          color: red;
-          background: none;
-          border: none;
-          cursor: pointer;
-          font-weight: bold;
-          transition: color 0.2s ease;
+        .cart-table {
+          margin-bottom: 25px;
         }
 
-        .btn-eliminar:hover {
-          color: darkred;
-        }
-
-        .nombre {
-          color: teal;
+        .table-header {
+          display: grid;
+          grid-template-columns: 2fr 1fr 1fr 1fr;
+          gap: 20px;
+          padding: 15px 0;
+          border-bottom: 1px solid #4b5563;
           font-weight: 600;
+          color: #d1d5db;
         }
 
-        .input-cantidad {
-          width: 60px;
-          padding: 6px 8px;
-          border: 1px solid #ccc;
-          border-radius: 6px;
-          text-align: center;
-        }
-
-        .resumen {
-          display: flex;
-          justify-content: space-between;
+        .cart-item {
+          display: grid;
+          grid-template-columns: 2fr 1fr 1fr 1fr;
+          gap: 20px;
+          padding: 20px 0;
+          border-bottom: 1px solid #4b5563;
           align-items: center;
-          background: #f5f5f5;
-          padding: 20px;
-          border-radius: 10px;
         }
 
-        .subtotal {
-          font-size: 20px;
-          font-weight: bold;
-          color: #222;
-        }
-
-        .botones {
+        .product-details {
           display: flex;
+          align-items: center;
           gap: 15px;
         }
 
-        .btn-vaciar,
-        .btn-comprar {
-          padding: 10px 20px;
+        .product-image {
+          width: 60px;
+          height: 60px;
+          object-fit: cover;
           border-radius: 8px;
-          border: none;
-          font-weight: bold;
-          cursor: pointer;
+          border: 2px solid #4b5563;
         }
 
-        .btn-vaciar {
-          background-color: #007bff;
-          color: white;
+        .product-info h3 {
+          margin: 0 0 8px 0;
+          font-size: 16px;
+          font-weight: 600;
         }
 
-        .btn-comprar {
-          background-color: #28a745;
+        .product-price,
+        .product-subtotal {
+          font-weight: 600;
+          font-size: 16px;
+        }
+
+        .quantity-input {
+          width: 60px;
+          padding: 8px;
+          border: 1px solid #4b5563;
+          border-radius: 6px;
+          background: #4b5563;
           color: white;
+          text-align: center;
+        }
+
+        .quantity-input:focus {
+          outline: none;
+          border-color: #ea580c;
+        }
+
+        /* Right Side - Order Summary */
+        .order-summary-section {
+          background: #4b5563;
+          border-radius: 12px;
+          padding: 30px;
+          color: white;
+          height: fit-content;
+        }
+
+        .order-summary-title {
+          font-size: 24px;
+          font-weight: 700;
+          margin-bottom: 25px;
+        }
+
+        .summary-field {
+          margin-bottom: 20px;
+        }
+
+        .summary-field label {
+          display: block;
+          font-size: 12px;
+          font-weight: 600;
+          color: #d1d5db;
+          margin-bottom: 8px;
+          text-transform: uppercase;
+        }
+
+        .promo-input-group {
+          display: flex;
+          gap: 10px;
+        }
+
+        .promo-input {
+          flex: 1;
+          padding: 12px 16px;
+          background: #374151;
+          border: 1px solid #6b7280;
+          border-radius: 8px;
+          color: white;
+          font-size: 14px;
+        }
+
+        .promo-input::placeholder {
+          color: #9ca3af;
+        }
+
+        .promo-input:focus {
+          outline: none;
+          border-color: #ea580c;
+        }
+
+        .cost-breakdown {
+          margin: 25px 0;
+          padding: 20px 0;
+          border-top: 1px solid #6b7280;
+          border-bottom: 1px solid #6b7280;
+        }
+
+        .cost-row {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 12px;
+          font-size: 14px;
+        }
+
+        .cost-row.total {
+          font-size: 18px;
+          font-weight: 700;
+          margin-top: 15px;
+          padding-top: 15px;
+          border-top: 1px solid #6b7280;
+        }
+
+        .free {
+          color: #10b981;
+        }
+
+        .empty-cart {
+          text-align: center;
+          padding: 40px 20px;
+        }
+
+        .empty-cart p {
+          margin-bottom: 20px;
+          font-size: 18px;
+          color: #d1d5db;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+          .cart-layout {
+            grid-template-columns: 1fr;
+            gap: 20px;
+          }
+
+          .order-summary-section {
+            order: -1;
+          }
         }
 
         @media (max-width: 768px) {
-          .tabla-carrito th, .tabla-carrito td {
-            padding: 8px;
+          .cart-container {
+            padding: 20px;
           }
 
-          .resumen {
+          .cart-section,
+          .order-summary-section {
+            padding: 20px;
+          }
+
+          .table-header,
+          .cart-item {
+            grid-template-columns: 1fr;
+            gap: 15px;
+            text-align: center;
+          }
+
+          .product-details {
             flex-direction: column;
-            gap: 10px;
+            text-align: center;
+          }
+
+          .cart-title {
+            font-size: 28px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .cart-container {
+            padding: 15px;
+          }
+
+          .cart-section,
+          .order-summary-section {
+            padding: 15px;
+          }
+
+          .promo-input-group {
+            flex-direction: column;
           }
         }
       `}</style>

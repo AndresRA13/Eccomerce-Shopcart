@@ -5,7 +5,7 @@ export default function PrivateRoute({ children }) {
   const { user } = useApp();
 
   // Solo permitir al admin
-  if (user?.email !== "admin@admin.com") {
+  if (!user || (user?.rol !== "admin" && user?.role !== "admin")) {
     return <Navigate to="/" />;
   }
 

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { db, auth } from "../firebase/config";
@@ -11,7 +11,6 @@ export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState([]);
   const [favoritos, setFavoritos] = useState([]);
   const [user, setUser] = useState(null);
-
   const [cargandoCarrito, setCargandoCarrito] = useState(true);
   const [cargandoFavoritos, setCargandoFavoritos] = useState(true);
 
@@ -19,10 +18,11 @@ export const CartProvider = ({ children }) => {
   const isInicialCartLoad = useRef(true);
   const isInicialFavLoad = useRef(true);
 
-  // Escuchar cambios en autenticación
+  // Escuchar cambios en autenticación - Optimizado
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
+      // Resetear estados cuando cambia el usuario
       setCart([]);
       setFavoritos([]);
       setCargandoCarrito(true);
@@ -34,91 +34,135 @@ export const CartProvider = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
-  // Cargar carrito y favoritos desde Firebase
+  // Cargar carrito desde Firebase - Optimizado con useCallback
+  const fetchCart = useCallback(async (userId) => {
+    if (!userId) return [];
+    
+    try {
+      const cartRef = doc(db, "carritos", userId);
+      const cartSnap = await getDoc(cartRef);
+      if (cartSnap.exists()) {
+        return cartSnap.data().products || [];
+      }
+      return [];
+    } catch (error) {
+      console.error("Error al obtener carrito:", error);
+      return [];
+    }
+  }, []);
+
+  // Cargar favoritos desde Firebase - Optimizado con useCallback
+  const fetchFavorites = useCallback(async (userId) => {
+    if (!userId) return [];
+    
+    try {
+      const favRef = doc(db, "favoritos", userId);
+      const favSnap = await getDoc(favRef);
+      if (favSnap.exists()) {
+        return favSnap.data().products || [];
+      }
+      return [];
+    } catch (error) {
+      console.error("Error al obtener favoritos:", error);
+      return [];
+    }
+  }, []);
+
+  // Cargar datos del usuario cuando cambia
   useEffect(() => {
-    const fetchData = async () => {
-      if (!user) return;
+    const loadUserData = async () => {
+      if (!user) {
+        setCargandoCarrito(false);
+        setCargandoFavoritos(false);
+        return;
+      }
 
       try {
-        const cartRef = doc(db, "carritos", user.uid);
-        const cartSnap = await getDoc(cartRef);
-        if (cartSnap.exists()) {
-          setCart(cartSnap.data().products || []);
-        }
-      } catch (error) {
-        console.error("Error al obtener carrito:", error);
+        const cartItems = await fetchCart(user.uid);
+        setCart(cartItems);
       } finally {
         setCargandoCarrito(false);
       }
 
       try {
-        const favRef = doc(db, "favoritos", user.uid);
-        const favSnap = await getDoc(favRef);
-        if (favSnap.exists()) {
-          setFavoritos(favSnap.data().products || []);
-        }
-      } catch (error) {
-        console.error("Error al obtener favoritos:", error);
+        const favItems = await fetchFavorites(user.uid);
+        setFavoritos(favItems);
       } finally {
         setCargandoFavoritos(false);
       }
     };
 
-    fetchData();
-  }, [user]);
+    loadUserData();
+  }, [user, fetchCart, fetchFavorites]);
 
-  // Guardar carrito en Firebase (solo después de carga inicial)
+  // Guardar carrito en Firebase (solo después de carga inicial) - Optimizado
+  const saveCart = useCallback(async (items, userId) => {
+    if (!userId) return;
+    
+    try {
+      const reducido = items.map((item) => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        image: item.image || item.mainImage || item.images?.[0] || "",
+      }));
+      await setDoc(doc(db, "carritos", userId), { products: reducido });
+    } catch (error) {
+      console.error("Error guardando carrito:", error);
+    }
+  }, []);
+
+  // Guardar favoritos en Firebase (solo después de carga inicial) - Optimizado
+  const saveFavorites = useCallback(async (items, userId) => {
+    if (!userId) return;
+    
+    try {
+      const reducido = items.map((item) => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        image: item.image || item.mainImage || item.images?.[0] || "",
+      }));
+      await setDoc(doc(db, "favoritos", userId), { products: reducido });
+    } catch (error) {
+      console.error("Error guardando favoritos:", error);
+    }
+  }, []);
+
+  // Efecto para guardar carrito
   useEffect(() => {
     if (!user || cargandoCarrito || isInicialCartLoad.current) {
       isInicialCartLoad.current = false;
       return;
     }
 
-    const guardarCarrito = async () => {
-      try {
-        const reducido = cart.map((item) => ({
-          id: item.id,
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity,
-          image: item.image || item.mainImage || item.images?.[0] || "",
-        }));
-        await setDoc(doc(db, "carritos", user.uid), { products: reducido });
-      } catch (error) {
-        console.error("Error guardando carrito:", error);
-      }
-    };
+    // Debounce para evitar múltiples guardados
+    const timeoutId = setTimeout(() => {
+      saveCart(cart, user.uid);
+    }, 500);
 
-    guardarCarrito();
-  }, [cart, user, cargandoCarrito]);
+    return () => clearTimeout(timeoutId);
+  }, [cart, user, cargandoCarrito, saveCart]);
 
-  // Guardar favoritos en Firebase (solo después de carga inicial)
+  // Efecto para guardar favoritos
   useEffect(() => {
     if (!user || cargandoFavoritos || isInicialFavLoad.current) {
       isInicialFavLoad.current = false;
       return;
     }
 
-    const guardarFavoritos = async () => {
-      try {
-        const reducido = favoritos.map((item) => ({
-          id: item.id,
-          name: item.name,
-          price: item.price,
-          image: item.image || item.mainImage || item.images?.[0] || "",
-        }));
-        await setDoc(doc(db, "favoritos", user.uid), { products: reducido });
-      } catch (error) {
-        console.error("Error guardando favoritos:", error);
-      }
-    };
+    // Debounce para evitar múltiples guardados
+    const timeoutId = setTimeout(() => {
+      saveFavorites(favoritos, user.uid);
+    }, 500);
 
-    guardarFavoritos();
-  }, [favoritos, user, cargandoFavoritos]);
+    return () => clearTimeout(timeoutId);
+  }, [favoritos, user, cargandoFavoritos, saveFavorites]);
 
-  // Funciones públicas
+  // Funciones públicas - Optimizadas con useCallback
 
-  const agregarAlCarrito = (producto) => {
+  const agregarAlCarrito = useCallback((producto) => {
     setCart((prevCart) => {
       const existe = prevCart.find((item) => item.id === producto.id);
       if (existe) {
@@ -131,22 +175,22 @@ export const CartProvider = ({ children }) => {
         return [...prevCart, { ...producto, quantity: 1 }];
       }
     });
-  };
+  }, []);
 
-  const quitarDelCarrito = (id) => {
+  const quitarDelCarrito = useCallback((id) => {
     setCart((prevCart) => prevCart.filter((item) => item.id !== id));
-  };
+  }, []);
 
-  const actualizarCantidad = (id, nuevaCantidad) => {
+  const actualizarCantidad = useCallback((id, nuevaCantidad) => {
     if (nuevaCantidad < 1) return;
     setCart((prevCart) =>
       prevCart.map((item) =>
         item.id === id ? { ...item, quantity: nuevaCantidad } : item
       )
     );
-  };
+  }, []);
 
-  const agregarAFavoritos = (producto) => {
+  const agregarAFavoritos = useCallback((producto) => {
     setFavoritos((prevFav) => {
       const existe = prevFav.find((item) => item.id === producto.id);
       if (!existe) {
@@ -154,24 +198,75 @@ export const CartProvider = ({ children }) => {
       }
       return prevFav;
     });
-  };
+  }, []);
 
-  const quitarDeFavoritos = (id) => {
+  const quitarDeFavoritos = useCallback((id) => {
     setFavoritos((prevFav) => prevFav.filter((item) => item.id !== id));
-  };
+  }, []);
+
+  // Calcular total del carrito - Memoizado
+  const totalCarrito = useMemo(() => {
+    return cart.reduce((total, item) => total + item.price * item.quantity, 0);
+  }, [cart]);
+
+  // Calcular cantidad total de items - Memoizado
+  const cantidadItems = useMemo(() => {
+    return cart.reduce((total, item) => total + item.quantity, 0);
+  }, [cart]);
+
+  // Verificar si un producto está en favoritos - Memoizado
+  const estaEnFavoritos = useCallback((id) => {
+    return favoritos.some(item => item.id === id);
+  }, [favoritos]);
+
+  // Verificar si un producto está en el carrito - Memoizado
+  const estaEnCarrito = useCallback((id) => {
+    return cart.some(item => item.id === id);
+  }, [cart]);
+
+  // Vaciar carrito
+  const vaciarCarrito = useCallback(() => {
+    setCart([]);
+  }, []);
+
+  // Memoizar el valor del contexto para evitar renderizados innecesarios
+  const contextValue = useMemo(
+    () => ({
+      cart,
+      favoritos,
+      cargandoCarrito,
+      cargandoFavoritos,
+      agregarAlCarrito,
+      quitarDelCarrito,
+      actualizarCantidad,
+      agregarAFavoritos,
+      quitarDeFavoritos,
+      totalCarrito,
+      cantidadItems,
+      estaEnFavoritos,
+      estaEnCarrito,
+      vaciarCarrito
+    }),
+    [
+      cart,
+      favoritos,
+      cargandoCarrito,
+      cargandoFavoritos,
+      agregarAlCarrito,
+      quitarDelCarrito,
+      actualizarCantidad,
+      agregarAFavoritos,
+      quitarDeFavoritos,
+      totalCarrito,
+      cantidadItems,
+      estaEnFavoritos,
+      estaEnCarrito,
+      vaciarCarrito
+    ]
+  );
 
   return (
-    <CartContext.Provider
-      value={{
-        cart,
-        favoritos,
-        agregarAlCarrito,
-        quitarDelCarrito,
-        actualizarCantidad,
-        agregarAFavoritos,
-        quitarDeFavoritos,
-      }}
-    >
+    <CartContext.Provider value={contextValue}>
       {children}
     </CartContext.Provider>
   );

@@ -1,5 +1,6 @@
 
 import Navbar from "../components/Navbar";
+import { Button, LazyImage } from "../components/common";
 
 export default function Contact() {
   return (
@@ -32,7 +33,13 @@ export default function Contact() {
             <input type="email" placeholder="Your Email" style={styles.input} />
             <input type="text" placeholder="Subject" style={styles.input} />
             <textarea placeholder="Your Message" rows="5" style={styles.textarea}></textarea>
-            <button type="submit" style={styles.button}>Send Message</button>
+            <Button 
+              type="submit" 
+              variant="primary"
+              style={styles.buttonOverride}
+            >
+              Send Message
+            </Button>
           </form>
         </div>
 
@@ -107,14 +114,8 @@ const styles = {
     fontSize: "14px",
     resize: "vertical",
   },
-  button: {
-    padding: "12px",
-    backgroundColor: "#1a1aff",
-    color: "#fff",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    fontSize: "16px",
+  buttonOverride: {
+    width: "100%",
   },
   mapContainer: {
     borderRadius: "10px",

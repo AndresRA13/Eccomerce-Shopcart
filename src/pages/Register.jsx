@@ -2,12 +2,16 @@ import { useState, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import { useNavigate, Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import { Button, Loader } from "../components/common";
+import Swal from "sweetalert2";
 
 export default function Register() {
   const { user, registerUser, loginWithGoogle } = useApp();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -18,131 +22,381 @@ export default function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     try {
       await registerUser(email, password, fullName);
+      Swal.fire({
+        icon: 'success',
+        title: '¡Cuenta creada!',
+        text: 'Tu registro se ha completado exitosamente',
+        timer: 1500,
+        showConfirmButton: false
+      });
       navigate("/");
     } catch (error) {
-      alert("Error al registrarse");
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Error al registrarse. Por favor, intenta nuevamente.'
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleGoogleRegister = async () => {
+    setLoading(true);
     try {
       await loginWithGoogle();
       navigate("/");
     } catch (error) {
-      alert("Error al registrarse con Google");
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Error al registrarse con Google. Por favor, intenta nuevamente.'
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <>
       <Navbar />
-      <div className="auth-container">
-        <h2>Registrarse</h2>
-        <form onSubmit={handleSubmit} className="auth-form">
-          <input
-            type="text"
-            placeholder="Nombre completo"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            required
-          />
-          <input
-            type="email"
-            placeholder="Correo"
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <input
-            type="password"
-            placeholder="Contraseña"
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          <button type="submit">Crear cuenta</button>
-        </form>
+      <div className="auth-page">
+        <div className="auth-container">
+          {loading ? (
+            <div className="loader-container">
+              <Loader size="lg" color="#3b82f6" text="Creando cuenta..." />
+            </div>
+          ) : (
+            <>
+              <h1 className="auth-title">Create Account</h1>
+              <p className="auth-subtitle">Enter your details to create your account.</p>
+              
+              <form onSubmit={handleSubmit} className="auth-form">
+                <div className="input-group">
+                  <label htmlFor="fullName">Full Name</label>
+                  <input
+                    id="fullName"
+                    type="text"
+                    placeholder="John Doe"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    required
+                  />
+                </div>
+                
+                <div className="input-group">
+                  <label htmlFor="email">Email</label>
+                  <input
+                    id="email"
+                    type="email"
+                    placeholder="sellostore@company.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                
+                <div className="input-group">
+                  <label htmlFor="password">Password</label>
+                  <div className="password-input">
+                    <input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Create a strong password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="password-toggle"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                          <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                      ) : (
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                          <line x1="1" y1="1" x2="23" y2="23"/>
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
+                
+                <Button 
+                  type="submit" 
+                  variant="primary" 
+                  fullWidth 
+                  className="register-btn-override"
+                  disabled={loading}
+                >
+                  Create Account
+                </Button>
+              </form>
 
-        <button className="google-button" onClick={handleGoogleRegister}>
-          Registrarse con Google
-        </button>
+              <div className="divider">
+                <span>Or Register With</span>
+              </div>
 
-        <p className="auth-switch">
-          ¿Ya tienes una cuenta? <Link to="/login">Inicia sesión</Link>
-        </p>
+              <div className="social-buttons">
+                <Button 
+                  className="social-btn google-btn" 
+                  onClick={handleGoogleRegister} 
+                  disabled={loading}
+                  variant="secondary"
+                >
+                  <span className="social-icon">G</span>
+                  Google
+                </Button>
+                <Button 
+                  className="social-btn apple-btn" 
+                  disabled
+                  variant="secondary"
+                >
+                  <span className="social-icon">🍎</span>
+                  Apple
+                </Button>
+              </div>
+
+              <div className="auth-switch">
+                <span>Already Have An Account? </span>
+                <Link to="/login">Sign In</Link>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       <style>{`
-        .auth-container {
-          max-width: 400px;
-          margin: 60px auto;
-          padding: 30px;
-          border: 1px solid #eee;
-          border-radius: 10px;
-          box-shadow: 0 5px 20px rgba(0,0,0,0.05);
-          text-align: center;
-          font-family: 'Poppins', sans-serif;
+        .auth-page {
+          min-height: 100vh;
+          background: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+          padding: 20px;
         }
 
-        .auth-container h2 {
-          margin-bottom: 25px;
+        .auth-container {
+          width: 100%;
+          max-width: 400px;
+          background: white;
+        }
+
+        .loader-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          height: 300px;
+        }
+
+        .auth-title {
+          font-size: 32px;
+          font-weight: 700;
+          color: #111827;
+          text-align: center;
+          margin-bottom: 8px;
+          line-height: 1.2;
+        }
+
+        .auth-subtitle {
+          font-size: 16px;
+          color: #6b7280;
+          text-align: center;
+          margin-bottom: 32px;
+          line-height: 1.5;
         }
 
         .auth-form {
           display: flex;
           flex-direction: column;
-          gap: 15px;
+          gap: 20px;
+          margin-bottom: 24px;
         }
 
-        .auth-form input {
-          padding: 10px;
-          border: 1px solid #ccc;
-          border-radius: 5px;
+        .input-group {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .input-group label {
           font-size: 14px;
+          font-weight: 500;
+          color: #111827;
+          text-align: left;
         }
 
-        .auth-form button {
-          padding: 10px;
-          background-color: #28a745;
-          color: white;
-          font-weight: bold;
+        .input-group input {
+          padding: 12px 16px;
+          border: 1px solid #d1d5db;
+          border-radius: 8px;
+          font-size: 16px;
+          background: #f9fafb;
+          color: #111827;
+          transition: all 0.2s ease;
+          box-sizing: border-box;
+          width: 100%;
+        }
+
+        .input-group input:focus {
+          outline: none;
+          border-color: #3b82f6;
+          background: white;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .input-group input::placeholder {
+          color: #9ca3af;
+        }
+
+        .password-input {
+          position: relative;
+          width: 100%;
+        }
+
+        .password-input input {
+          padding-right: 50px;
+          box-sizing: border-box;
+          width: 100%;
+        }
+
+        .password-toggle {
+          position: absolute;
+          right: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+          background: none;
           border: none;
-          border-radius: 5px;
           cursor: pointer;
+          color: #6b7280;
+          padding: 4px;
+          border-radius: 4px;
+          transition: background-color 0.2s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
-        .auth-form button:hover {
-          background-color: #218838;
+        .password-toggle:hover {
+          background: #f3f4f6;
         }
 
-        .google-button {
-          margin-top: 15px;
-          padding: 10px;
-          background-color: #db4437;
-          color: white;
+        .register-btn-override {
+          background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+          transition: all 0.2s ease;
+        }
+
+        .register-btn-override:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .register-btn-override:active {
+          transform: translateY(0);
+        }
+
+        .divider {
+          text-align: center;
+          margin: 24px 0;
+          position: relative;
+        }
+
+        .divider::before,
+        .divider::after {
+          content: '';
+          position: absolute;
+          top: 50%;
+          width: 35%;
+          height: 1px;
+          background: #e5e7eb;
+        }
+
+        .divider::before {
+          left: 0;
+        }
+
+        .divider::after {
+          right: 0;
+        }
+
+        .divider span {
+          background: white;
+          padding: 0 16px;
+          color: #6b7280;
+          font-size: 14px;
+          font-weight: 500;
+        }
+
+        .social-buttons {
+          display: flex;
+          gap: 12px;
+          margin-bottom: 24px;
+        }
+
+        .social-btn {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          font-size: 14px;
+          font-weight: 500;
+          color: #111827;
+        }
+
+        .social-icon {
+          font-size: 16px;
           font-weight: bold;
-          border: none;
-          border-radius: 5px;
-          cursor: pointer;
         }
 
-        .google-button:hover {
-          background-color: #c23321;
+        .google-btn .social-icon {
+          background: linear-gradient(45deg, #4285f4, #ea4335, #fbbc05, #34a853);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
         }
 
         .auth-switch {
-          margin-top: 20px;
+          text-align: center;
           font-size: 14px;
+          color: #6b7280;
         }
 
         .auth-switch a {
-          color: #007bff;
+          color: #3b82f6;
           text-decoration: none;
-          font-weight: bold;
+          font-weight: 500;
+          transition: color 0.2s;
         }
 
         .auth-switch a:hover {
+          color: #2563eb;
           text-decoration: underline;
+        }
+
+        @media (max-width: 480px) {
+          .auth-container {
+            padding: 0;
+          }
+          
+          .auth-title {
+            font-size: 28px;
+          }
+          
+          .social-buttons {
+            flex-direction: column;
+          }
         }
       `}</style>
     </>
