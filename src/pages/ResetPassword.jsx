@@ -35,7 +35,7 @@ export default function ResetPassword() {
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: 'Error al enviar el correo. Intenta de nuevo.'
+        text: 'Error al enviar el correo. Intentalo de nuevo.'
       });
       setMessage("❌ Error al enviar el correo. Intenta de nuevo.");
     } finally {
