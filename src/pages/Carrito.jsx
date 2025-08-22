@@ -166,19 +166,13 @@ export default function Carrito() {
               </div>
             ) : (
               <>
-                <div className="cart-table">
-                  <div className="table-header">
-                    <span>Product Details</span>
-                    <span>Price</span>
-                    <span>Quantity</span>
-                    <span>Subtotal</span>
-                  </div>
-                  
+                <div className="cart-items-list">
                   {carrito.map((producto) => (
-                    <div key={producto.id} className="cart-item">
-                      <div className="product-details">
+                    <div key={producto.id} className="cart-item-card">
+                      <div className="cart-item-left">
                         <LazyImage
                           src={
+                            producto.image ||
                             producto.mainImage ||
                             producto.mainimg ||
                             producto.images?.[0] ||
@@ -186,40 +180,45 @@ export default function Carrito() {
                           }
                           alt={producto.name}
                           className="product-image"
-                          width={60}
-                          height={60}
+                          width={80}
+                          height={80}
+                          preload={true}
                         />
                         <div className="product-info">
                           <h3 className="product-name">{producto.name}</h3>
-                          <Button 
-                            onClick={() => eliminarDelCarrito(producto.id)}
-                            variant="link"
-                            size="sm"
-                            className="remove-link"
-                          >
-                            Remove
-                          </Button>
+                          <div className="product-material">Material: {producto.material || 'N/A'}</div>
+                          <div className="product-color">Color: {producto.color || 'N/A'}</div>
                         </div>
                       </div>
                       
-                      <div className="product-price">
-                        ${producto.price.toFixed(2)}
-                      </div>
-                      
-                      <div className="product-quantity">
-                        <input
-                          type="number"
-                          min="1"
-                          value={producto.quantity}
-                          onChange={(e) =>
-                            actualizarCantidad(producto.id, parseInt(e.target.value))
-                          }
-                          className="quantity-input"
-                        />
-                      </div>
-                      
-                      <div className="product-subtotal">
-                        ${(producto.price * producto.quantity).toFixed(2)}
+                      <div className="cart-item-right">
+                        <div className="product-price">
+                          ${producto.price.toFixed(2)}
+                        </div>
+                        
+                        <div className="product-quantity-controls">
+                          <button 
+                            className="quantity-btn" 
+                            onClick={() => actualizarCantidad(producto.id, Math.max(1, producto.quantity - 1))}
+                          >
+                            -
+                          </button>
+                          <span className="quantity-value">{producto.quantity}</span>
+                          <button 
+                            className="quantity-btn" 
+                            onClick={() => actualizarCantidad(producto.id, producto.quantity + 1)}
+                          >
+                            +
+                          </button>
+                        </div>
+                        
+                        <button 
+                          className="remove-item-btn"
+                          onClick={() => eliminarDelCarrito(producto.id)}
+                          title="Remove"
+                        >
+                          <i className="fas fa-trash"></i>
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -347,68 +346,111 @@ export default function Carrito() {
           margin-bottom: 25px;
         }
 
-        .cart-table {
+        .cart-items-list {
           margin-bottom: 25px;
+          display: flex;
+          flex-direction: column;
+          gap: 15px;
         }
 
-        .table-header {
-          display: grid;
-          grid-template-columns: 2fr 1fr 1fr 1fr;
-          gap: 20px;
-          padding: 15px 0;
-          border-bottom: 1px solid #4b5563;
-          font-weight: 600;
-          color: #d1d5db;
-        }
-
-        .cart-item {
-          display: grid;
-          grid-template-columns: 2fr 1fr 1fr 1fr;
-          gap: 20px;
-          padding: 20px 0;
-          border-bottom: 1px solid #4b5563;
+        .cart-item-card {
+          display: flex;
+          justify-content: space-between;
           align-items: center;
+          padding: 15px;
+          background: #2d3748;
+          border-radius: 10px;
+          border-left: 3px solid #ea580c;
         }
 
-        .product-details {
+        .cart-item-left {
           display: flex;
           align-items: center;
           gap: 15px;
         }
 
         .product-image {
-          width: 60px;
-          height: 60px;
+          width: 80px;
+          height: 80px;
           object-fit: cover;
           border-radius: 8px;
           border: 2px solid #4b5563;
         }
 
+        .product-info {
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+        }
+
         .product-info h3 {
-          margin: 0 0 8px 0;
+          margin: 0;
           font-size: 16px;
           font-weight: 600;
         }
 
-        .product-price,
-        .product-subtotal {
-          font-weight: 600;
-          font-size: 16px;
+        .product-material,
+        .product-color {
+          font-size: 14px;
+          color: #d1d5db;
         }
 
-        .quantity-input {
-          width: 60px;
-          padding: 8px;
-          border: 1px solid #4b5563;
-          border-radius: 6px;
+        .cart-item-right {
+          display: flex;
+          align-items: center;
+          gap: 20px;
+        }
+
+        .product-price {
+          font-weight: 600;
+          font-size: 16px;
+          min-width: 80px;
+          text-align: right;
+        }
+
+        .product-quantity-controls {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .quantity-btn {
+          width: 30px;
+          height: 30px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
           background: #4b5563;
+          border: none;
+          border-radius: 6px;
           color: white;
+          font-size: 16px;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+
+        .quantity-btn:hover {
+          background: #ea580c;
+        }
+
+        .quantity-value {
+          font-size: 16px;
+          font-weight: 600;
+          min-width: 20px;
           text-align: center;
         }
 
-        .quantity-input:focus {
-          outline: none;
-          border-color: #ea580c;
+        .remove-item-btn {
+          background: none;
+          border: none;
+          color: #9ca3af;
+          cursor: pointer;
+          font-size: 16px;
+          transition: color 0.2s;
+        }
+
+        .remove-item-btn:hover {
+          color: #ef4444;
         }
 
         /* Right Side - Order Summary */

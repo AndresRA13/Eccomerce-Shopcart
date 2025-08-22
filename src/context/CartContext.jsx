@@ -106,6 +106,9 @@ export const CartProvider = ({ children }) => {
         price: item.price,
         quantity: item.quantity,
         image: item.image || item.mainImage || item.images?.[0] || "",
+        material: item.material || "N/A",
+        color: item.color || "N/A",
+        stock: item.stock || 0,
       }));
       await setDoc(doc(db, "carritos", userId), { products: reducido });
     } catch (error) {
@@ -126,6 +129,8 @@ export const CartProvider = ({ children }) => {
         stock: item.stock || 0,
         category: item.category || "Sin categoría",
         type: item.type || "Producto",
+        material: item.material || "N/A",
+        color: item.color || "N/A",
         status: item.stock > 0 ? "In Stock" : "Out of Stock"
       }));
       await setDoc(doc(db, "favoritos", userId), { products: reducido });
