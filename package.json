@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-   "homepage": "http:/AndresRA13.github.io/Eccomerce-Shopcart",
+   "homepage": "http:/AndresRA13.github.io/Eccomerce-Shopcart/",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
