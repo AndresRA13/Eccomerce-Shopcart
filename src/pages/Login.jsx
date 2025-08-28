@@ -285,6 +285,7 @@ export default function Login() {
         .password-input {
           position: relative;
           width: 100%;
+          padding: 0;
         }
 
         .password-input input {
