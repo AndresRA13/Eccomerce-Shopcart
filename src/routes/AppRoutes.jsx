@@ -11,6 +11,9 @@ import Productos from '../pages/Productos';
 import Carrito from "../pages/Carrito";
 import Favoritos from "../pages/Favorites";
 import ResetPassword from "../pages/ResetPassword";
+import NotFound from "../pages/NotFound";
+import Checkout from "../pages/checkout";
+import UserOrders from "../pages/UserOrders";
 
 
 export default function AppRoutes() {
@@ -27,7 +30,8 @@ export default function AppRoutes() {
         <Route path="/Carrito" element={<Carrito />} />
         <Route path="/favoritos" element={<Favoritos />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-        
+        <Route path="/checkout" element={<Checkout />} />
+        <Route path="/mis-ordenes" element={<UserOrders />} />
 
         <Route
           path="/admin"
@@ -37,6 +41,9 @@ export default function AppRoutes() {
             </PrivateRoute>
           }
         />
+        
+        {/* Ruta para página 404 - Debe ir al final para capturar todas las rutas no definidas */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
 
   );

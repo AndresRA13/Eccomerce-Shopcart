@@ -88,11 +88,11 @@ const ProductCard = ({
           <div className="producto-precio-container">
             {producto.oldPrice && producto.onSale ? (
               <>
-                <span className="producto-precio-original">${producto.oldPrice?.toLocaleString('es-CO')}</span>
-                <span className="producto-precio">${producto.price?.toLocaleString('es-CO')}</span>
+                <span className="producto-precio-original">${Math.round(producto.oldPrice).toLocaleString('es-CO')}</span>
+                <span className="producto-precio">${Math.round(producto.price).toLocaleString('es-CO')}</span>
               </>
             ) : (
-              <span className="producto-precio">${producto.price?.toLocaleString('es-CO')}</span>
+              <span className="producto-precio">${Math.round(producto.price).toLocaleString('es-CO')}</span>
             )}
           </div>
           <span className={`producto-stock ${producto.stock <= 0 ? "agotado" : ""}`}>

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useApp } from "../context/AppContext";
 import { useCart } from "../context/CartContext";
+import { useUserOrders } from "../hooks/useUserOrders";
 import { deleteUser } from "firebase/auth";
 import { doc, deleteDoc, updateDoc, setDoc, getDoc } from "firebase/firestore";
 import { db, auth } from "../firebase/config";
@@ -37,7 +38,8 @@ import {
 
 export default function Navbar() {
   const { user, logoutUser, updateUserRoleInDB } = useApp();
-  const { favoritos = [], cart = [] } = useCart();
+  const { favoritos = [], cart = [], cantidadItems } = useCart();
+  const { orderCount } = useUserOrders();
   const [menuOpen, setMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
@@ -404,20 +406,22 @@ export default function Navbar() {
             <Link to="/favoritos" title="Favoritos" className="icon-link">
               <Heart weight="regular" size={24} />
               {favoritos.length > 0 && (
-                <span className="notification-badge">{favoritos.length}</span>
+                <span className="notification-badge" key={`fav-${favoritos.length}`}>{favoritos.length}</span>
               )}
             </Link>
 
             <Link to="/carrito" title="Carrito" className="icon-link">
               <ShoppingCart weight="regular" size={24} />
               {cart.length > 0 && (
-                <span className="notification-badge">{cart.length}</span>
+                <span className="notification-badge" key={`cart-${cart.length}`}>{cart.length}</span>
               )}
             </Link>
 
-            <Link to="/notificaciones" title="Notificaciones" className="icon-link">
+            <Link to="/mis-ordenes" title="Mis Órdenes" className="icon-link">
               <List weight="regular" size={24} />
-              <span className="notification-badge">0</span>
+              {orderCount > 0 && (
+                <span className="notification-badge">{orderCount}</span>
+              )}
             </Link>
 
             {user && (

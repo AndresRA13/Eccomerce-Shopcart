@@ -12,10 +12,10 @@ import { useCart } from "../context/CartContext";
 import Footer from "../components/Footer";
 
 export default function Favoritos() {
-  const [favoritos, setFavoritos] = useState([]);
+  const [localFavoritos, setLocalFavoritos] = useState([]);
   const [userUid, setUserUid] = useState(null);
   const [cargando, setCargando] = useState(true);
-  const { agregarAlCarrito } = useCart();
+  const { agregarAlCarrito, favoritos, quitarDeFavoritos } = useCart();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -23,7 +23,7 @@ export default function Favoritos() {
         setUserUid(user.uid);
       } else {
         setUserUid(null);
-        setFavoritos([]);
+        setLocalFavoritos([]);
         setCargando(false);
       }
     });
@@ -32,88 +32,27 @@ export default function Favoritos() {
   }, []);
 
   useEffect(() => {
-    const obtenerFavoritosDesdeFirestore = async () => {
-      if (!userUid) return;
+    // Ahora usamos los favoritos del contexto
+    setLocalFavoritos(favoritos);
+    // Establecer cargando en false después de un tiempo
+    const timer = setTimeout(() => {
+      setCargando(false);
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [favoritos]);
 
-      setCargando(true);
-      try {
-        const docRef = doc(db, "favoritos", userUid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          // Verificar si los productos tienen la propiedad stock
-          const productos = data.products || [];
-          console.log("Productos obtenidos de Firestore:", productos);
-          
-          // Verificar si hay productos sin stock o con stock 0 y actualizarlos
-          const productosActualizados = productos.map(producto => {
-            if (typeof producto.stock !== 'number' || producto.stock === 0) {
-              return { ...producto, stock: 10 }; // Asignar un stock por defecto
-            }
-            return producto;
-          });
-          
-          // Si hay productos que necesitan actualización, guardarlos
-          const necesitaActualizacion = JSON.stringify(productos) !== JSON.stringify(productosActualizados);
-          if (necesitaActualizacion) {
-            console.log("Actualizando productos con stock por defecto");
-            guardarFavoritosEnFirestore(productosActualizados);
-          }
-          
-          setFavoritos(productosActualizados);
-        } else {
-          setFavoritos([]);
-        }
-      } catch (error) {
-        console.error("Error al obtener favoritos:", error);
-      } finally {
-        setCargando(false);
-      }
-    };
-
-    obtenerFavoritosDesdeFirestore();
-  }, [userUid]);
-
-  const guardarFavoritosEnFirestore = async (favoritosActualizados) => {
-    if (!userUid) return;
-
-    try {
-      const favoritosReducidos = favoritosActualizados.map((item) => {
-        // Asegurarse de que el stock sea un número
-        const stock = typeof item.stock === 'number' ? item.stock : 10; // Valor por defecto si no hay stock
-        
-        return {
-          id: item.id,
-          name: item.name,
-          price: item.price,
-          image: item.image || item.mainImage || item.images?.[0] || "",
-          category: item.category || "Sin categoría",
-          type: item.type || "Producto",
-          status: stock > 0 ? "In Stock" : "Out of Stock",
-          stock: stock
-        };
-      });
-
-      console.log("Guardando favoritos con stock:", favoritosReducidos);
-      await setDoc(doc(db, "favoritos", userUid), { products: favoritosReducidos });
-    } catch (error) {
-      console.error("Error guardando favoritos en Firestore:", error);
-    }
-  };
-
-  const quitarDeFavoritos = (id) => {
+  const handleQuitarDeFavoritos = (id) => {
     if (confirm("¿Estás seguro que deseas eliminar este producto de tus favoritos?")) {
-      const nuevosFavoritos = favoritos.filter((item) => item.id !== id);
-      setFavoritos(nuevosFavoritos);
-      guardarFavoritosEnFirestore(nuevosFavoritos);
+      quitarDeFavoritos(id);
       alert("El producto ha sido eliminado de tus favoritos.");
     }
   };
 
   const resetFavorites = () => {
     if (confirm("¿Estás seguro que deseas eliminar todos tus favoritos?")) {
-      setFavoritos([]);
-      guardarFavoritosEnFirestore([]);
+      // Eliminar cada favorito individualmente para actualizar el contador
+      [...favoritos].forEach(item => quitarDeFavoritos(item.id));
       alert("Todos los favoritos han sido eliminados.");
     }
   };
@@ -225,7 +164,7 @@ export default function Favoritos() {
                     </div>
                     
                     <div className="wishlist-item-price">
-                      ${producto.price?.toLocaleString() || "0"}
+                      ${Math.round(producto.price || 0).toLocaleString('es-CO')}
                     </div>
                     
                     <div className="wishlist-item-actions">
@@ -242,7 +181,7 @@ export default function Favoritos() {
                       
                       <button 
                         className="remove-item-btn"
-                        onClick={() => quitarDeFavoritos(producto.id)}
+                        onClick={() => handleQuitarDeFavoritos(producto.id)}
                         title="Eliminar de favoritos"
                       >
                         <i className="fas fa-trash"></i>

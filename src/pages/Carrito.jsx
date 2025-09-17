@@ -1,20 +1,26 @@
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { useEffect, useState } from "react";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../firebase/config";
+import { useCart } from "../context/CartContext";
+import AddressSelector from "../components/AddressSelector";
+import Swal from "sweetalert2";
 
 // Importar componentes reutilizables
 import { Button, LazyImage, Loader } from "../components/common";
 
 export default function Carrito() {
   const navigate = useNavigate();
-  const [carrito, setCarrito] = useState([]);
+  const { cart, quitarDelCarrito, actualizarCantidad } = useCart();
   const [userUid, setUserUid] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [promoCode, setPromoCode] = useState("");
+  const [selectedAddress, setSelectedAddress] = useState(null);
+  const [appliedPromo, setAppliedPromo] = useState(null);
+  const [promoLoading, setPromoLoading] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -22,7 +28,6 @@ export default function Carrito() {
         setUserUid(user.uid);
       } else {
         setUserUid(null);
-        setCarrito([]);
         setCargando(false);
       }
     });
@@ -31,90 +36,116 @@ export default function Carrito() {
   }, []);
 
   useEffect(() => {
-    const obtenerCarritoDesdeFirestore = async () => {
-      if (!userUid) {
-        setCarrito([]);
-        return;
-      }
+    // Solo necesitamos establecer cargando en false después de un tiempo
+    // ya que el carrito se maneja ahora desde el contexto
+    const timer = setTimeout(() => {
+      setCargando(false);
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
-      setCargando(true);
-      try {
-        const docRef = doc(db, "carritos", userUid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setCarrito(data.products || []);
-        } else {
-          setCarrito([]);
-        }
-      } catch (error) {
-        console.error("Error al obtener carrito desde Firestore:", error);
-        setCarrito([]);
-      } finally {
-        setCargando(false);
-      }
-    };
-
-    obtenerCarritoDesdeFirestore();
-  }, [userUid]);
-
-  const guardarCarritoEnFirestore = async (carritoActualizado) => {
-    if (!userUid) return;
-
-    try {
-      const carritoReducido = carritoActualizado.map((item) => ({
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-        mainImage: item.image || item.mainImage || item.mainimg || item.images?.[0] || "",
-      }));
-
-      const docRef = doc(db, "carritos", userUid);
-      await setDoc(docRef, { products: carritoReducido });
-    } catch (error) {
-      console.error("Error guardando carrito en Firestore:", error);
-    }
-  };
-
-  const eliminarDelCarrito = (id) => {
+  const handleEliminarDelCarrito = (id) => {
     if (confirm("¿Estás seguro que deseas eliminar este producto del carrito?")) {
-      const nuevoCarrito = carrito.filter((item) => item.id !== id);
-      setCarrito(nuevoCarrito);
-      guardarCarritoEnFirestore(nuevoCarrito);
+      quitarDelCarrito(id);
       alert("El producto ha sido eliminado del carrito.");
     }
   };
 
-  const actualizarCantidad = async (id, nuevaCantidad) => {
+  const handleActualizarCantidad = (id, nuevaCantidad) => {
     if (nuevaCantidad < 1) return;
-    const nuevoCarrito = carrito.map((item) =>
-      item.id === id ? { ...item, quantity: nuevaCantidad } : item
-    );
-    setCarrito(nuevoCarrito);
-    await guardarCarritoEnFirestore(nuevoCarrito);
+    actualizarCantidad(id, nuevaCantidad);
   };
 
-  const subtotal = carrito.reduce(
+  const subtotal = cart.reduce(
     (acc, producto) => acc + producto.price * producto.quantity,
     0
   );
 
   const shippingFee = 0; // Free shipping
   const tax = subtotal * 0.02; // 2% tax
-  const total = subtotal + shippingFee + tax;
+  
+  // Calculate discount
+  const discount = appliedPromo ? (subtotal * appliedPromo.discount / 100) : 0;
+  const total = subtotal + shippingFee + tax - discount;
 
-  const applyPromoCode = () => {
-    if (promoCode.trim()) {
-      alert("El código promocional ha sido aplicado.");
-      setPromoCode("");
+  const applyPromoCode = async () => {
+    if (!promoCode.trim()) {
+      Swal.fire("Error", "Please enter a promo code", "error");
+      return;
     }
+
+    setPromoLoading(true);
+    try {
+      const promoQuery = query(
+        collection(db, "promoCodes"),
+        where("code", "==", promoCode.toUpperCase()),
+        where("isActive", "==", true)
+      );
+      
+      const promoSnapshot = await getDocs(promoQuery);
+      
+      if (promoSnapshot.empty) {
+        Swal.fire("Error", "Invalid or expired promo code", "error");
+        setPromoLoading(false);
+        return;
+      }
+
+      const promoData = promoSnapshot.docs[0].data();
+      
+      // Check expiration date
+      if (promoData.expiresAt && promoData.expiresAt.toDate() < new Date()) {
+        Swal.fire("Error", "This promo code has expired", "error");
+        setPromoLoading(false);
+        return;
+      }
+
+      // Check minimum order amount
+      if (promoData.minOrderAmount && subtotal < promoData.minOrderAmount) {
+        Swal.fire("Error", `Minimum order amount of $${Math.round(promoData.minOrderAmount).toLocaleString('es-CO')} required`, "error");
+        setPromoLoading(false);
+        return;
+      }
+
+      setAppliedPromo(promoData);
+      Swal.fire("Success", `Promo code applied! ${promoData.discount}% discount`, "success");
+      setPromoCode("");
+    } catch (error) {
+      console.error("Error applying promo code:", error);
+      Swal.fire("Error", "Failed to apply promo code", "error");
+    }
+    setPromoLoading(false);
+  };
+
+  const removePromoCode = () => {
+    setAppliedPromo(null);
+    Swal.fire("Removed", "Promo code removed", "info");
   };
 
   const placeOrder = () => {
-    if (confirm(`¿Proceder con la compra? Total a pagar: $${total.toFixed(2)}`)) {
-      navigate("/whatsapp");
+    if (!selectedAddress) {
+      Swal.fire("Error", "Please select a delivery address", "error");
+      return;
     }
+
+    if (cart.length === 0) {
+      Swal.fire("Error", "Your cart is empty", "error");
+      return;
+    }
+
+    // Navigate to checkout with order data
+    navigate("/checkout", {
+      state: {
+        cart,
+        selectedAddress,
+        appliedPromo,
+        subtotal,
+        shippingFee,
+        tax,
+        discount,
+        total
+      }
+    });
   };
 
   if (cargando) {
@@ -150,9 +181,9 @@ export default function Carrito() {
             <h2 className="cart-title">
               Your <span className="highlight">Cart</span>
             </h2>
-            <p className="item-count">{carrito.length} Items</p>
+            <p className="item-count">{cart.length} Items</p>
 
-            {carrito.length === 0 ? (
+            {cart.length === 0 ? (
               <div className="empty-cart">
                 <p>No tienes productos en el carrito.</p>
                 <Button 
@@ -167,7 +198,7 @@ export default function Carrito() {
             ) : (
               <>
                 <div className="cart-items-list">
-                  {carrito.map((producto) => (
+                  {cart.map((producto) => (
                     <div key={producto.id} className="cart-item-card">
                       <div className="cart-item-left">
                         <LazyImage
@@ -193,20 +224,20 @@ export default function Carrito() {
                       
                       <div className="cart-item-right">
                         <div className="product-price">
-                          ${producto.price.toFixed(2)}
+                          ${Math.round(producto.price).toLocaleString('es-CO')}
                         </div>
                         
                         <div className="product-quantity-controls">
                           <button 
                             className="quantity-btn" 
-                            onClick={() => actualizarCantidad(producto.id, Math.max(1, producto.quantity - 1))}
+                            onClick={() => handleActualizarCantidad(producto.id, Math.max(1, producto.quantity - 1))}
                           >
                             -
                           </button>
                           <span className="quantity-value">{producto.quantity}</span>
                           <button 
                             className="quantity-btn" 
-                            onClick={() => actualizarCantidad(producto.id, producto.quantity + 1)}
+                            onClick={() => handleActualizarCantidad(producto.id, producto.quantity + 1)}
                           >
                             +
                           </button>
@@ -214,7 +245,7 @@ export default function Carrito() {
                         
                         <button 
                           className="remove-item-btn"
-                          onClick={() => eliminarDelCarrito(producto.id)}
+                          onClick={() => handleEliminarDelCarrito(producto.id)}
                           title="Remove"
                         >
                           <i className="fas fa-trash"></i>
@@ -244,40 +275,54 @@ export default function Carrito() {
             
             <div className="summary-field">
               <label>SELECT ADDRESS</label>
-              <Button 
-                className="address-selector"
-                variant="secondary"
-                fullWidth
-              >
-                Select Address
-                <i className="fas fa-arrow-right"></i>
-              </Button>
+              <AddressSelector 
+                onAddressSelect={setSelectedAddress}
+                selectedAddress={selectedAddress}
+              />
             </div>
 
             <div className="summary-field">
               <label>PROMO CODE</label>
-              <div className="promo-input-group">
-                <input
-                  type="text"
-                  placeholder="Enter promo code"
-                  value={promoCode}
-                  onChange={(e) => setPromoCode(e.target.value)}
-                  className="promo-input"
-                />
-                <Button 
-                  onClick={applyPromoCode}
-                  variant="primary"
-                  className="apply-btn"
-                >
-                  Apply
-                </Button>
-              </div>
+              {appliedPromo ? (
+                <div className="applied-promo">
+                  <div className="promo-info">
+                    <span className="promo-code-display">{appliedPromo.code}</span>
+                    <span className="promo-discount">-{appliedPromo.discount}%</span>
+                  </div>
+                  <Button 
+                    onClick={removePromoCode}
+                    variant="secondary"
+                    className="remove-promo-btn"
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ) : (
+                <div className="promo-input-group">
+                  <input
+                    type="text"
+                    placeholder="Enter promo code"
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value)}
+                    className="promo-input"
+                    onKeyPress={(e) => e.key === 'Enter' && applyPromoCode()}
+                  />
+                  <Button 
+                    onClick={applyPromoCode}
+                    variant="primary"
+                    className="apply-btn"
+                    disabled={promoLoading}
+                  >
+                    {promoLoading ? "Applying..." : "Apply"}
+                  </Button>
+                </div>
+              )}
             </div>
 
             <div className="cost-breakdown">
               <div className="cost-row">
                 <span>Price:</span>
-                <span>${subtotal.toFixed(2)}</span>
+                <span>${Math.round(subtotal).toLocaleString('es-CO')}</span>
               </div>
               <div className="cost-row">
                 <span>Shipping Fee:</span>
@@ -285,17 +330,23 @@ export default function Carrito() {
               </div>
               <div className="cost-row">
                 <span>Tax (2%):</span>
-                <span>${tax.toFixed(2)}</span>
+                <span>${Math.round(tax).toLocaleString('es-CO')}</span>
               </div>
+              {appliedPromo && (
+                <div className="cost-row discount">
+                  <span>Discount ({appliedPromo.discount}%):</span>
+                  <span className="discount-amount">-${Math.round(discount).toLocaleString('es-CO')}</span>
+                </div>
+              )}
               <div className="cost-row total">
                 <span>Total:</span>
-                <span>${total.toFixed(2)}</span>
+                <span>${Math.round(total).toLocaleString('es-CO')}</span>
               </div>
             </div>
 
             <Button 
               onClick={placeOrder}
-              disabled={carrito.length === 0}
+              disabled={cart.length === 0}
               variant="primary"
               size="lg"
               fullWidth
@@ -529,6 +580,50 @@ export default function Carrito() {
 
         .free {
           color: #10b981;
+        }
+
+        .applied-promo {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 12px 16px;
+          background: #dcfce7;
+          border: 1px solid #16a34a;
+          border-radius: 8px;
+          color: #15803d;
+        }
+
+        .promo-info {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .promo-code-display {
+          font-weight: 600;
+          font-size: 14px;
+        }
+
+        .promo-discount {
+          font-size: 12px;
+          font-weight: 500;
+        }
+
+        .remove-promo-btn {
+          background: transparent !important;
+          color: #dc2626 !important;
+          border: 1px solid #dc2626 !important;
+          padding: 6px 12px !important;
+          font-size: 12px !important;
+        }
+
+        .cost-row.discount {
+          color: #16a34a;
+        }
+
+        .discount-amount {
+          color: #16a34a;
+          font-weight: 600;
         }
 
         .empty-cart {

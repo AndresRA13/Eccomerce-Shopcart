@@ -224,8 +224,8 @@ export default function ProductoDetalle() {
           <p className="pd-desc">{producto.description || ""}</p>
 
           <div className="pd-price-row">
-            <span className="pd-price">{(producto.price || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
-            {producto.oldPrice && <span className="pd-old-price">{(producto.oldPrice).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>}
+            <span className="pd-price">${Math.round(producto.price || 0).toLocaleString('es-CO')}</span>
+            {producto.oldPrice && <span className="pd-old-price">${Math.round(producto.oldPrice).toLocaleString('es-CO')}</span>}
           </div>
 
           <div className="pd-attrs">
