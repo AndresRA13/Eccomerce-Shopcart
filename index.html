@@ -12,7 +12,57 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Ecommerce - PSG</title>
-    <script type="module" crossorigin src="/eccomerce-shopcart/assets/index-BLmSDnYU.js"></script>
+    
+    <!-- Immediate browser extension error suppression -->
+    <script>
+      (function() {
+        'use strict';
+        
+        // Immediate error suppression - runs before anything else
+        window.addEventListener('error', function(e) {
+          if (e.error && e.error.message && (
+            e.error.message.includes('gx_no_') ||
+            e.error.message.includes('staticLoadtimePalette') ||
+            e.error.message.includes('updatePalette') ||
+            e.error.message.includes('initPalette') ||
+            e.error.message.includes('ColorsImpl')
+          )) {
+            console.warn('🚫 Browser extension error suppressed at HTML level:', e.error.message);
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+          }
+        }, true);
+        
+        window.addEventListener('unhandledrejection', function(e) {
+          if (e.reason && e.reason.message && (
+            e.reason.message.includes('gx_no_') ||
+            e.reason.message.includes('staticLoadtimePalette') ||
+            e.reason.message.includes('updatePalette') ||
+            e.reason.message.includes('initPalette')
+          )) {
+            console.warn('🚫 Browser extension promise rejection suppressed at HTML level:', e.reason.message);
+            e.preventDefault();
+            return false;
+          }
+        });
+        
+        // Hide extension-injected elements
+        const style = document.createElement('style');
+        style.textContent = `
+          [id*="gx_"],
+          [class*="gx_"],
+          [data-extension],
+          [data-adblock],
+          div[style*="position: fixed"][style*="z-index"] {
+            display: none !important;
+            visibility: hidden !important;
+          }
+        `;
+        document.head.appendChild(style);
+      })();
+    </script>
+    <script type="module" crossorigin src="/eccomerce-shopcart/assets/index-LI9ZVjl4.js"></script>
     <link rel="stylesheet" crossorigin href="/eccomerce-shopcart/assets/index-Bk8xwsPX.css">
   </head>
   <body>

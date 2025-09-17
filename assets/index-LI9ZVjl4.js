@@ -7405,4 +7405,48 @@ https://sweetalert2.github.io/#ajax-request`),kU(t),typeof t.title=="string"&&(t
             height: 60px;
           }
         }
-      `})]}):d.jsxs(d.Fragment,{children:[d.jsx(si,{}),d.jsx("div",{className:"orders-container",children:d.jsxs("div",{className:"no-auth-message",children:[d.jsx("h2",{children:"Inicia sesión para ver tus órdenes"}),d.jsx("p",{children:"Necesitas estar autenticado para ver tu historial de órdenes."}),d.jsx("a",{href:"/login",className:"login-btn",children:"Iniciar sesión"})]})}),d.jsx(yl,{})]})}function _X(){return d.jsxs(n5,{children:[d.jsx(Zn,{path:"/",element:d.jsx(zU,{})}),d.jsx(Zn,{path:"/blog",element:d.jsx(HU,{})}),d.jsx(Zn,{path:"/contacto",element:d.jsx(qU,{})}),d.jsx(Zn,{path:"/login",element:d.jsx($U,{})}),d.jsx(Zn,{path:"/register",element:d.jsx(WU,{})}),d.jsx(Zn,{path:"/productos",element:d.jsx(L$,{})}),d.jsx(Zn,{path:"/admin",element:d.jsx(iC,{})}),d.jsx(Zn,{path:"/producto/:id",element:d.jsx(O$,{})}),d.jsx(Zn,{path:"/Carrito",element:d.jsx(V$,{})}),d.jsx(Zn,{path:"/favoritos",element:d.jsx(yX,{})}),d.jsx(Zn,{path:"/reset-password",element:d.jsx(vX,{})}),d.jsx(Zn,{path:"/checkout",element:d.jsx(bX,{})}),d.jsx(Zn,{path:"/mis-ordenes",element:d.jsx(wX,{})}),d.jsx(Zn,{path:"/admin",element:d.jsx(D$,{children:d.jsx(iC,{})})}),d.jsx(Zn,{path:"*",element:d.jsx(xX,{})})]})}function EX(){return d.jsx(E9,{children:d.jsx(_X,{})})}uD.createRoot(document.getElementById("root")).render(d.jsx(Y.StrictMode,{children:d.jsx(A5,{children:d.jsx(T9,{children:d.jsx(EX,{})})})}));
+      `})]}):d.jsxs(d.Fragment,{children:[d.jsx(si,{}),d.jsx("div",{className:"orders-container",children:d.jsxs("div",{className:"no-auth-message",children:[d.jsx("h2",{children:"Inicia sesión para ver tus órdenes"}),d.jsx("p",{children:"Necesitas estar autenticado para ver tu historial de órdenes."}),d.jsx("a",{href:"/login",className:"login-btn",children:"Iniciar sesión"})]})}),d.jsx(yl,{})]})}function _X(){return d.jsxs(n5,{children:[d.jsx(Zn,{path:"/",element:d.jsx(zU,{})}),d.jsx(Zn,{path:"/blog",element:d.jsx(HU,{})}),d.jsx(Zn,{path:"/contacto",element:d.jsx(qU,{})}),d.jsx(Zn,{path:"/login",element:d.jsx($U,{})}),d.jsx(Zn,{path:"/register",element:d.jsx(WU,{})}),d.jsx(Zn,{path:"/productos",element:d.jsx(L$,{})}),d.jsx(Zn,{path:"/admin",element:d.jsx(iC,{})}),d.jsx(Zn,{path:"/producto/:id",element:d.jsx(O$,{})}),d.jsx(Zn,{path:"/Carrito",element:d.jsx(V$,{})}),d.jsx(Zn,{path:"/favoritos",element:d.jsx(yX,{})}),d.jsx(Zn,{path:"/reset-password",element:d.jsx(vX,{})}),d.jsx(Zn,{path:"/checkout",element:d.jsx(bX,{})}),d.jsx(Zn,{path:"/mis-ordenes",element:d.jsx(wX,{})}),d.jsx(Zn,{path:"/admin",element:d.jsx(D$,{children:d.jsx(iC,{})})}),d.jsx(Zn,{path:"*",element:d.jsx(xX,{})})]})}function EX(){return d.jsx(E9,{children:d.jsx(_X,{})})}(function(){const e=console.error;console.error=function(...i){const s=i.join(" ");if(s.includes("gx_no_")||s.includes("staticLoadtimePalette")||s.includes("updatePalette")||s.includes("initPalette")||s.includes("ColorsImpl")){console.warn("🚫 Browser extension error suppressed:",s);return}e.apply(console,i)},window.addEventListener("error",function(i){var l;const s=((l=i.error)==null?void 0:l.message)||i.message||"",a=i.filename||"";if(s.includes("gx_no_")||s.includes("staticLoadtimePalette")||s.includes("updatePalette")||s.includes("initPalette")||s.includes("ColorsImpl")||a.includes("VM"))return console.warn("🚫 Browser extension error caught globally:",s),setTimeout(()=>{document.getElementById("extension-error-notice")||n()},1e3),i.preventDefault(),i.stopPropagation(),!1},!0),window.addEventListener("unhandledrejection",function(i){var a;const s=((a=i.reason)==null?void 0:a.message)||"";if(s.includes("gx_no_")||s.includes("staticLoadtimePalette")||s.includes("updatePalette")||s.includes("initPalette"))return console.warn("🚫 Browser extension promise rejection caught:",s),setTimeout(()=>{document.getElementById("extension-error-notice")||n()},1e3),i.preventDefault(),!1});function n(){const i=document.createElement("div");i.id="extension-error-notice",i.innerHTML=`
+      <div style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        border-bottom: 3px solid #f59e0b;
+        padding: 12px 20px;
+        z-index: 10000;
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        animation: slideDown 0.5s ease-out;
+      ">
+        <div style="
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          max-width: 1200px;
+          margin: 0 auto;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        ">
+          <span style="font-size: 20px; flex-shrink: 0;">⚠️</span>
+          <div style="flex: 1; color: #92400e; font-size: 14px; line-height: 1.4;">
+            <strong>Detectado: Error de extensión del navegador (Opera GX/Bloqueador)</strong><br>
+            Para eliminar este error, desactiva extensiones del navegador o usa modo incógnito.
+          </div>
+          <button onclick="this.parentElement.parentElement.remove()" style="
+            background: transparent;
+            border: none;
+            font-size: 18px;
+            color: #92400e;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+          " onmouseover="this.style.backgroundColor='rgba(146, 64, 14, 0.1)'" onmouseout="this.style.backgroundColor='transparent'">✕</button>
+        </div>
+      </div>
+      <style>
+        @keyframes slideDown {
+          0% { transform: translateY(-100%); opacity: 0; }
+          100% { transform: translateY(0); opacity: 1; }
+        }
+      </style>
+    `,document.body.insertBefore(i,document.body.firstChild),setTimeout(()=>{i.parentNode&&i.remove()},15e3)}})();uD.createRoot(document.getElementById("root")).render(d.jsx(Y.StrictMode,{children:d.jsx(A5,{children:d.jsx(T9,{children:d.jsx(EX,{})})})}));
