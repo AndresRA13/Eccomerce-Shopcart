@@ -2,6 +2,17 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Content Security Policy to block extension scripts -->
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com; object-src 'none'; base-uri 'self';">
+    
+    <!-- Prevent extension injection -->
+    <meta name="referrer" content="no-referrer">
+    <meta name="robots" content="noindex, nofollow">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    
     <link rel="icon" type="image/svg+xml" href="/eccomerce-shopcart/vite.svg" />
     <link
   rel="stylesheet"
@@ -18,6 +29,63 @@
       (function() {
         'use strict';
         
+        // Nuclear option: Override all potential extension injection points
+        const originalSetTimeout = window.setTimeout;
+        const originalSetInterval = window.setInterval;
+        const originalRequestAnimationFrame = window.requestAnimationFrame;
+        
+        // Block extension scripts from running
+        window.setTimeout = function(callback, delay, ...args) {
+          if (typeof callback === 'string') {
+            // Block string-based timeouts that might contain extension code
+            if (callback.includes('gx_') || callback.includes('staticLoadtimePalette') || 
+                callback.includes('updatePalette') || callback.includes('initPalette')) {
+              console.warn('🚫 Blocked extension setTimeout:', callback);
+              return;
+            }
+          }
+          return originalSetTimeout.call(this, callback, delay, ...args);
+        };
+        
+        window.setInterval = function(callback, delay, ...args) {
+          if (typeof callback === 'string') {
+            if (callback.includes('gx_') || callback.includes('staticLoadtimePalette') || 
+                callback.includes('updatePalette') || callback.includes('initPalette')) {
+              console.warn('🚫 Blocked extension setInterval:', callback);
+              return;
+            }
+          }
+          return originalSetInterval.call(this, callback, delay, ...args);
+        };
+        
+        // Override window.eval to prevent extension script injection
+        const originalEval = window.eval;
+        window.eval = function(code) {
+          if (typeof code === 'string' && (
+            code.includes('gx_') || code.includes('staticLoadtimePalette') || 
+            code.includes('updatePalette') || code.includes('initPalette') || 
+            code.includes('ColorsImpl')
+          )) {
+            console.warn('🚫 Blocked extension eval:', code.substring(0, 100) + '...');
+            return;
+          }
+          return originalEval.call(this, code);
+        };
+        
+        // Block Function constructor
+        const originalFunction = window.Function;
+        window.Function = function(...args) {
+          const code = args[args.length - 1];
+          if (typeof code === 'string' && (
+            code.includes('gx_') || code.includes('staticLoadtimePalette') || 
+            code.includes('updatePalette') || code.includes('initPalette')
+          )) {
+            console.warn('🚫 Blocked extension Function constructor');
+            return function() {};
+          }
+          return originalFunction.apply(this, args);
+        };
+        
         // Immediate error suppression - runs before anything else
         window.addEventListener('error', function(e) {
           if (e.error && e.error.message && (
@@ -29,7 +97,7 @@
           )) {
             console.warn('🚫 Browser extension error suppressed at HTML level:', e.error.message);
             e.preventDefault();
-            e.stopPropagation();
+            e.stopImmediatePropagation();
             return false;
           }
         }, true);
@@ -47,6 +115,33 @@
           }
         });
         
+        // Create a mutation observer to remove extension elements
+        const observer = new MutationObserver(function(mutations) {
+          mutations.forEach(function(mutation) {
+            mutation.addedNodes.forEach(function(node) {
+              if (node.nodeType === 1) { // Element node
+                if (node.id && node.id.includes('gx_')) {
+                  console.warn('🚫 Removed extension element:', node.id);
+                  node.remove();
+                }
+                if (node.className && typeof node.className === 'string' && node.className.includes('gx_')) {
+                  console.warn('🚫 Removed extension element by class:', node.className);
+                  node.remove();
+                }
+              }
+            });
+          });
+        });
+        
+        // Start observing when DOM is ready
+        if (document.body) {
+          observer.observe(document.body, { childList: true, subtree: true });
+        } else {
+          document.addEventListener('DOMContentLoaded', function() {
+            observer.observe(document.body, { childList: true, subtree: true });
+          });
+        }
+        
         // Hide extension-injected elements
         const style = document.createElement('style');
         style.textContent = `
@@ -54,12 +149,43 @@
           [class*="gx_"],
           [data-extension],
           [data-adblock],
-          div[style*="position: fixed"][style*="z-index"] {
+          div[style*="position: fixed"][style*="z-index"],
+          script[src*="extension://"],
+          script[src*="chrome-extension://"],
+          script[src*="moz-extension://"] {
             display: none !important;
             visibility: hidden !important;
           }
+          
+          /* Block extension CSS */
+          *[style*="staticLoadtimePalette"],
+          *[style*="gx_no_"] {
+            display: none !important;
+          }
         `;
-        document.head.appendChild(style);
+        
+        if (document.head) {
+          document.head.appendChild(style);
+        } else {
+          document.addEventListener('DOMContentLoaded', function() {
+            document.head.appendChild(style);
+          });
+        }
+        
+        // Override console to completely silence extension errors
+        const originalConsoleError = console.error;
+        console.error = function(...args) {
+          const message = args.join(' ');
+          if (message.includes('gx_no_') || message.includes('staticLoadtimePalette') || 
+              message.includes('updatePalette') || message.includes('initPalette') ||
+              message.includes('ColorsImpl')) {
+            // Completely silence these errors
+            return;
+          }
+          return originalConsoleError.apply(console, args);
+        };
+        
+        console.warn('🛡️ Maximum browser extension protection activated');
       })();
     </script>
     <script type="module" crossorigin src="/eccomerce-shopcart/assets/index-LI9ZVjl4.js"></script>
